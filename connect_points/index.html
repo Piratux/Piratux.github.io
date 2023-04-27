@@ -1,0 +1,25 @@
+<html>
+	<head>
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	
+	<body>
+		<script type="text/javascript" src="./index.js"></script>
+		<canvas id="main_canvas" width="400" height="400"></canvas>
+		<br />
+
+		<div>
+			<p>
+				<button onclick="reset_grid()">Reset connections</button>
+				<br />
+				Grid size: <span id="grid_size">1</span>
+				<button onclick="increase_grid_size()">+</button>
+				<button onclick="decrease_grid_size()">-</button>
+				<br />
+				Manhattan distance: <span id="manhattan_distance">0</span>
+				<br />
+				True distance: <span id="true_distance">0</span>
+			</p>
+		</div>
+	</body>
+</html>
