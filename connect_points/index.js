@@ -186,6 +186,7 @@ function add_grid_entry_if_needed(mouse_pos_x, mouse_pos_y){
 	grid_connection_data = Array.from(new Set(grid_connection_data.map(JSON.stringify)), JSON.parse)
 	
 	update_distances();
+	update_c_n();
 }
 
 function update_distances(){
@@ -200,6 +201,18 @@ function update_distances(){
 	
 	document.getElementById("manhattan_distance").textContent = manhattan_distance;
 	document.getElementById("true_distance").textContent = parseFloat(true_distance).toFixed(2);
+}
+
+function update_c_n(){
+	let c_n = 0;
+	for(let i = 0; i < grid_connection_data.length; i++){
+		let x_i0 = grid_connection_data[i][0] + 1;
+		let y_i0 = grid_connection_data[i][1] + 1;
+		let x_i1 = grid_connection_data[i][2] + 1;
+		let y_i1 = grid_connection_data[i][3] + 1;
+		c_n += x_i0 * x_i1 + y_i0 * y_i1;
+	}
+	document.getElementById("c_n").textContent = c_n;
 }
 
 function get_canvas_mouse_pos(event){
