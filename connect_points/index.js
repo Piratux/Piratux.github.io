@@ -299,33 +299,33 @@ function remove_grid_entry_if_needed(mouse_pos_x, mouse_pos_y){
 	update_connection_measurements();
 }
 
-function set_d_l(new_value){
-	document.getElementById("d_l").textContent = new_value;
+function set_d_g(new_value){
+	document.getElementById("d_g").textContent = new_value;
 }
 
-function set_c_l(new_value){
-	document.getElementById("c_l").textContent = new_value;
+function set_c_g(new_value){
+	document.getElementById("c_g").textContent = new_value;
 }
 
 function update_connection_measurements(){
-	let d_l = 0;
+	let d_g = 0;
 	for(let i = 0; i < grid_connection_data.length; i++){
 		let diff_x = Math.abs(grid_connection_data[i][0] - grid_connection_data[i][2]);
 		let diff_y = Math.abs(grid_connection_data[i][1] - grid_connection_data[i][3]);
-		d_l += diff_x * diff_x + diff_y * diff_y;
+		d_g += diff_x * diff_x + diff_y * diff_y;
 	}
-	set_d_l(d_l);
+	set_d_g(d_g);
 	
-	let c_l = 0;
+	let c_g = 0;
 	for(let i = 0; i < grid_connection_data.length; i++){
 		let x_i0 = grid_connection_data[i][0] + 1;
 		let y_i0 = grid_connection_data[i][1] + 1;
 		let x_i1 = grid_connection_data[i][2] + 1;
 		let y_i1 = grid_connection_data[i][3] + 1;
-		c_l += x_i0 * x_i1 + y_i0 * y_i1;
+		c_g += x_i0 * x_i1 + y_i0 * y_i1;
 	}
 	
-	set_c_l(c_l);
+	set_c_g(c_g);
 }
 
 function get_canvas_mouse_pos(event){

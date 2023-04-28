@@ -7,6 +7,9 @@
 		<script type="text/javascript" src="./index.js"></script>
 
 		<div class="canvas">
+			<h1>
+				Grid connector
+			</h1>
 			<canvas id="main_canvas" width="640" height="640"></canvas>
 			<br />
 			<p>
@@ -16,41 +19,53 @@
 				<button onclick="decrease_grid_size()">-</button>
 				<button onclick="increase_grid_size()">+</button>
 				<br />
-				d(L): <span id="d_l">0</span>
+				d(G): <span id="d_g">0</span>
 				<br />
-				c(L): <span id="c_l">0</span>
+				c(G): <span id="c_g">0</span>
 				<br />
 			</p>
 		</div>
 		<div class="controls">
+			<h3>
+				Controls
+			</h3>
 			<p>
-				Controls:
+				- Hold left mouse button: connect points with an edge.
 				<br />
-				- Hold left mouse button: connect points.
-				<br />
-				- Hold right mouse button: disconnect points.
+				- Hold right mouse button: disconnect points by removing edge between them (if there is one).
 			</p>
 		</div>
 		<div class="info">
+			<h2>
+				Motivation
+			</h2>
 			<p>
-				d(L) formula:
+				This page was made to aid solving graph connection related problems. Here are some of those problems.
+			</p>
+			<p>
+				Problem 1: Given Hamiltonian cycle whose edges do not self-intersect, find such cycle that maximises d(G).
 				<br />
-				<!-- <div class="formula"> -->
-					<img src="Images/d_L.png" alt="d(L) formula">
-				<!-- </div> -->
+				Problem 2: Given Hamiltonian cycle whose edges do not self-intersect, find such cycle that minimises c(G).
 				<br />
-				<br />
+				<img src="Images/formulas.png" alt="Problem formulas">
+				<!-- <br /> -->
+				<!-- d(G) formula: -->
+				<!-- <br /> -->
+				<!-- <img src="Images/d_G.png" alt="d(G) formula"> -->
+				<!-- <br /> -->
+				<!-- <br /> -->
 				
-				c(L) formula:
-				<br />
-				<!-- <div class="formula"> -->
-					<img src="Images/c_L.png" alt="c(L) formula">
-				<!-- </div> -->
-				<br />
+				<!-- Problem 2: Given Hamiltonian cycle whose edges do not self-intersect, find such cycle that minimises c(G). -->
+				<!-- <br /> -->
+				<!-- c(G) formula: -->
+				<!-- <br /> -->
+				<!-- <img src="Images/c_G.png" alt="c(G) formula"> -->
+				<!-- <br /> -->
 			</p>
 		</div>
 		<p>
-			Credits: Giedrius Alkauskas
+			<br />
+			Problems author: Giedrius Alkauskas
 		</p>
 	</body>
 </html>
