@@ -5,23 +5,52 @@
 	
 	<body>
 		<script type="text/javascript" src="./index.js"></script>
-		<canvas id="main_canvas" width="400" height="400"></canvas>
-		<br />
 
-		<div>
+		<div class="canvas">
+			<canvas id="main_canvas" width="640" height="640"></canvas>
+			<br />
 			<p>
 				<button onclick="reset_grid()">Reset connections</button>
 				<br />
 				Grid size: <span id="grid_size">1</span>
-				<button onclick="increase_grid_size()">+</button>
 				<button onclick="decrease_grid_size()">-</button>
+				<button onclick="increase_grid_size()">+</button>
 				<br />
-				Manhattan distance: <span id="manhattan_distance">0</span>
+				d(L): <span id="d_l">0</span>
 				<br />
-				True distance: <span id="true_distance">0</span>
+				c(L): <span id="c_l">0</span>
 				<br />
-				c(n): <span id="c_n">0</span>
 			</p>
 		</div>
+		<div class="controls">
+			<p>
+				Controls:
+				<br />
+				- Hold left mouse button: connect points.
+				<br />
+				- Hold right mouse button: disconnect points.
+			</p>
+		</div>
+		<div class="info">
+			<p>
+				d(L) formula:
+				<br />
+				<!-- <div class="formula"> -->
+					<img src="Images/d_L.png" alt="d(L) formula">
+				<!-- </div> -->
+				<br />
+				<br />
+				
+				c(L) formula:
+				<br />
+				<!-- <div class="formula"> -->
+					<img src="Images/c_L.png" alt="c(L) formula">
+				<!-- </div> -->
+				<br />
+			</p>
+		</div>
+		<p>
+			Credits: Giedrius Alkauskas
+		</p>
 	</body>
 </html>
