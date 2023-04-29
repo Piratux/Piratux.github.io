@@ -146,8 +146,8 @@ function reset_grid(){
 	update_connection_measurements();
 }
 
-function set_grid_size(new_size){
-	circle_grid_size = clamp(new_size, min_circle_grid_size, max_circle_grid_size);
+function set_grid_size(new_value){
+	circle_grid_size = clamp(new_value, min_circle_grid_size, max_circle_grid_size);
 	document.getElementById("grid_size").textContent = circle_grid_size;
 }
 
@@ -160,7 +160,6 @@ function decrease_grid_size(){
 	
 	// remove out of bounds grid connections
 	for(let i = 0; i < grid_connection_data.length; i++){
-		console.log(i);
 		for(let j = 0; j < 4; j++){
 			if(grid_connection_data[i][j] >= circle_grid_size){
 				grid_connection_data.splice(i, 1);
@@ -277,8 +276,7 @@ function remove_grid_entry_if_needed(mouse_pos_x, mouse_pos_y){
 	
 	let arr_to_remove1 = [old_last_grid_circle_x, old_last_grid_circle_y, last_grid_circle_x, last_grid_circle_y];
 	let arr_to_remove2 = [last_grid_circle_x, last_grid_circle_y, old_last_grid_circle_x, old_last_grid_circle_y];
-	// console.log(arr_to_remove1.toString(), arr_to_remove2.toString());
-	// console.log(arr_to_remove2.toString());
+	
 	for(let i = 0; i < grid_connection_data.length; i++){
 		let is_equal1 = true;
 		let is_equal2 = true;
@@ -290,7 +288,7 @@ function remove_grid_entry_if_needed(mouse_pos_x, mouse_pos_y){
 				is_equal2 = false;
 			}
 		}
-		// let contains = grid_connection_data.every(function(value, index) { return value === arr_to_remove[index]});
+
 		if(is_equal1 || is_equal2){
 			grid_connection_data.splice(i, 1);
 		}
