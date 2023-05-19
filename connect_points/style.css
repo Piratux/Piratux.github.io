@@ -10,6 +10,28 @@ div.canvas {
 	text-align: center;
 }
 
+div.option_column {
+  float: left;
+  width: 40%;
+}
+
+div.function_column {
+  float: left;
+  width: 20%;
+}
+
+div.info_column {
+  float: left;
+  width: 40%;
+}
+
+/* Clear floats after the columns */
+div.canvas_info:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
 img {
   width: auto;
   height: 250px;
