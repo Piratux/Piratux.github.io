@@ -38,7 +38,7 @@ const colour_orange = "#edb211";
 const colour_light_orange = "#ffcc40";
 const colour_green = "#35c13d";
 const colour_red = "#ff0000";
-const colour_dark_red = "#cf0000";
+const colour_dark_red = "#a10000";
 
 window.onload = function(){
 	canvas = document.getElementById('main_canvas');
