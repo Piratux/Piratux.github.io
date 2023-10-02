@@ -1,0 +1,88 @@
+<html>
+
+<head>
+    <link
+        rel="stylesheet"
+        href="style.css"
+    />
+</head>
+
+<body>
+    <script
+        type="text/javascript"
+        src="./index.js"
+    ></script>
+
+    <div class="canvas">
+        <h1>
+            Hausdorff distance visualiser
+        </h1>
+
+        <canvas
+            id="main_canvas"
+            width="700"
+            height="700"
+        ></canvas>
+    </div>
+
+    <div class="canvas_info">
+        <div class="option_column">
+            <p>
+                <button onclick="reset_grid()">Reset connections</button>
+            <div>
+                <input
+                    type="radio"
+                    id="green"
+                    name="colour"
+                    value="green"
+                    checked
+                    onclick="set_green_line()"
+                />
+                <label for="green">Green line</label>
+            </div>
+
+            <div>
+                <input
+                    type="radio"
+                    id="orange"
+                    name="colour"
+                    value="orange"
+                    onclick="set_orange_line()"
+                />
+                <label for="orange">Orange line</label>
+            </div>
+            </p>
+        </div>
+
+        <div class="info_column">
+            <p>
+                Hausdorff distance:
+                <span id="hausdorff_distance"></span>
+                <br />
+            </p>
+        </div>
+    </div>
+
+    <div class="controls">
+        <h3>
+            Controls
+        </h3>
+        <p>
+            - Hold left mouse button: connect points with an edge.
+            <br />
+            - Hold right mouse button: disconnect points by removing edge between them (if there is one).
+            <br />
+            - Select "Green line or "Orange line"  to draw different colour lines.
+        </p>
+    </div>
+
+    <h3>
+        Information
+    </h3>
+    <p>
+        Once both colour polygons are drawn, distance is calculated and indicated by a purple line
+    </p>
+    
+</body>
+
+</html>
