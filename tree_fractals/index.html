@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
  <head>
  </head>
@@ -18,6 +19,7 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
 const lerp = (from, to, t) => from + (to - from) * t;
+const degrees_to_radians = (degrees) => degrees * (Math.PI / 180.0);
 
 var curr = 0;
 var max_it = 6;
@@ -31,7 +33,29 @@ var start_step = 0;
 // animation parameters
 var anim_toggled = 0;
 var anim_speed = 0.005;
+var anim_speed = 0.05;
 var anim_progress = 0;
+
+let canvas_width = 500;
+let canvas_height = 500;
+// let stick_width = 300;
+// let stick_height = 500;
+let stick_width = 50;
+let stick_height = 200;
+let half_stick_width = stick_width/2;
+let halfstick_height = stick_height/2;
+let stick_offset_x = (canvas_width - stick_width) / 2;
+let stick_offset_y = (canvas_height - stick_height) / 2;
+
+let canvas_offset_x = canvas_width/2;
+let canvas_offset_y = canvas_height;
+
+// let rotations = [degrees_to_radians(-10), degrees_to_radians(20)];
+let rotations = [degrees_to_radians(-10), degrees_to_radians(25)];
+// let transform = [0.5, 0, 0, 0.5, canvas_width / 2.0, stick_offset_y + stick_height - (stick_width / 2)];
+// let transform = [0.5, 0, 0, 0.5, canvas_width / 2.0, 0];
+// let transform = [0.5, 0, 0, 0.5, 0, 0];
+let transform = [0.5, 0, 0, 0.5, 0, -stick_height];
 
 const transforms = [
 	[0.5, 0, 0, -0.5, 0, 0, Math.PI/2],
@@ -55,8 +79,9 @@ function init() {
 		canvases.push(document.createElement('canvas'));
 		var c = canvases[canvases.length - 1];
 		ctx = c.getContext('2d');
-		c.width = 500;
-		c.height = 500;
+        // ctx.moveTo(canvas_width/2, canvas_height/2);
+		c.width = canvas_width;
+		c.height = canvas_height;
 		c.hidden = true;
 		canvasContainer.appendChild(c);
 		
@@ -64,35 +89,39 @@ function init() {
 		ctx.style = 'black';
 		ctx.beginPath();
 		ctx.moveTo(0,0);
-		ctx.lineTo(500,0);
-		ctx.lineTo(500,500);
-		ctx.lineTo(0,500);
+		ctx.lineTo(canvas_width,0);
+		ctx.lineTo(canvas_width,canvas_height);
+		ctx.lineTo(0,canvas_height);
 		ctx.closePath();
 		ctx.stroke();
 		
-		// draw background
-		ctx.fillStyle = 'white';
-		ctx.fillRect(0, 0, 500, 500);
-		
 		if(i != max_it + 1){
 			curr_colour = 'black';
-			start_step = i-1 ;
+			start_step = i-1;
 			draw_fractal(i);
+            // anim_progress = 1;
+            // draw_animated_fractal(i);
 		}
+
+        // offset to middle
+        ctx.translate(canvas_offset_x, canvas_offset_y);
+
+        clear_screen();
 	}
 	
 	anim_canvas = canvases[max_it+1];
 	
 	canvases[0].hidden = false;
+
+    // toggle_animation();
 	
 	window.requestAnimationFrame(loop);
 }
 
 function loop(){
+    // console.log('test' + Math.random(1000));
 	if (anim_toggled == 1){
-		// draw background
-		ctx.fillStyle = 'white';
-		ctx.fillRect(0, 0, 500, 500);
+        clear_screen();
 		
 		start_step = curr-1;
 		draw_animated_fractal(curr);
@@ -100,6 +129,11 @@ function loop(){
 	}
 	
 	window.requestAnimationFrame(loop);
+}
+
+function clear_screen(){
+    ctx.fillStyle = 'white';
+    ctx.fillRect(-canvas_offset_x, -canvas_offset_y, canvas_width, canvas_height);
 }
 
 // Recursive draw
@@ -143,104 +177,89 @@ function draw_fractal(step) {
 		draw_fractal(step);
 	}
 	else {
-		draw_letterF();
+		draw_tree_stick();
 	}
 }
 
 // Recursive draw 
 function draw_animated_fractal(step) {
 	if (step > 0) {
+        draw_tree_stick();
 		step = step-1;
-		for(var i = 0; i < transforms.length; i++){
+		for(var i = 0; i < rotations.length; i++){
+            // draw_tree_stick();
+
 			ctx.save();
 			
-			if (start_step == step){
-				curr_colour = transform_colours[i];
-				
-				ctx.transform(
-					1, 
-					0,
-					0,
-					1,
-					lerp(0, transforms[i][4], anim_progress),
-					lerp(0, transforms[i][5], anim_progress)
-				);
-				ctx.rotate(lerp(0, transforms[i][6], anim_progress));
-				ctx.transform(
-					lerp(1, transforms[i][0], anim_progress),
-					lerp(0, transforms[i][1], anim_progress),
-					lerp(0, transforms[i][2], anim_progress),
-					lerp(1, transforms[i][3], anim_progress),
-					0,
-					0
-				);
-			}
-			else{
-				ctx.transform(
-					1, 
-					0,
-					0,
-					1,
-					transforms[i][4],
-					transforms[i][5]
-				);
-				ctx.rotate(transforms[i][6]);
-				ctx.transform(
-					transforms[i][0],
-					transforms[i][1],
-					transforms[i][2],
-					transforms[i][3],
-					0,
-					0
-				);
-			}
-			
-			
-			<!-- if (start_step == step){ -->
-				<!-- curr_colour = transform_colours[i];	 -->
-			<!-- } -->
-			<!-- ctx.transform( -->
-				<!-- 1,  -->
-				<!-- 0, -->
-				<!-- 0, -->
-				<!-- 1, -->
-				<!-- lerp(0, transforms[i][4], anim_progress), -->
-				<!-- lerp(0, transforms[i][5], anim_progress) -->
-			<!-- ); -->
-			<!-- ctx.rotate(lerp(0, transforms[i][6], anim_progress)); -->
-			<!-- ctx.transform( -->
-				<!-- lerp(1, transforms[i][0], anim_progress), -->
-				<!-- lerp(0, transforms[i][1], anim_progress), -->
-				<!-- lerp(0, transforms[i][2], anim_progress), -->
-				<!-- lerp(1, transforms[i][3], anim_progress), -->
-				<!-- 0, -->
-				<!-- 0 -->
-			<!-- ); -->
+			// ctx.transform(
+            //     1, 
+            //     0,
+            //     0,
+            //     1,
+            //     lerp(0, transforms[i][4], anim_progress),
+            //     lerp(0, transforms[i][5], anim_progress)
+            // );
+            // ctx.rotate(lerp(0, transforms[i][6], anim_progress));
+            // ctx.transform(
+            //     lerp(1, transforms[i][0], anim_progress),
+            //     lerp(0, transforms[i][1], anim_progress),
+            //     lerp(0, transforms[i][2], anim_progress),
+            //     lerp(1, transforms[i][3], anim_progress),
+            //     0,
+            //     0
+            // );
+
+            
+            ctx.transform(
+                1, 
+                0,
+                0,
+                1,
+                lerp(0, transform[4], anim_progress),
+                lerp(0, transform[5], anim_progress)
+            );
+            ctx.rotate(lerp(0, rotations[i], anim_progress));
+            ctx.transform(
+                lerp(1, transform[0], anim_progress),
+                lerp(0, transform[1], anim_progress),
+                lerp(0, transform[2], anim_progress),
+                lerp(1, transform[3], anim_progress),
+                0,
+                0
+            );
 			
 			draw_animated_fractal(step); 
 			ctx.restore();
 		}
 	}
 	else {
-		draw_letterF();
+		draw_tree_stick();
 	}
 }
 
-function draw_letterF(){
+function draw_tree_stick(){
 	ctx.fillStyle = curr_colour;
 	ctx.beginPath();
-	ctx.moveTo(0,0);
-	ctx.lineTo(200,0);
-	ctx.lineTo(200,100);
-	ctx.lineTo(100,100);
-	ctx.lineTo(100,200);
-	ctx.lineTo(200,200);
-	ctx.lineTo(200,300);
-	ctx.lineTo(100,300);
-	ctx.lineTo(100,500);
-	ctx.lineTo(0,500);
-	ctx.closePath();
-	ctx.fill();
+
+	// ctx.moveTo(0/2,0/2);
+	// ctx.lineTo(200/2,0/2);
+	// ctx.lineTo(200/2,100/2);
+	// ctx.lineTo(100/2,100/2);
+	// ctx.lineTo(100/2,200/2);
+	// ctx.lineTo(200/2,200/2);
+	// ctx.lineTo(200/2,300/2);
+	// ctx.lineTo(100/2,300/2);
+	// ctx.lineTo(100/2,500/2);
+	// ctx.lineTo(0/2,500/2);
+    // ctx.closePath();
+    // ctx.fill();
+
+
+    // ctx.moveTo(canvas_width/2, canvas_height/2);
+    ctx.fillRect(-half_stick_width, -stick_height, stick_width, stick_height)
+    // ctx.fillRect(-stick_width/2, -stick_height/2, stick_width, stick_height)
+	
+	
 }
 
 function set_prev(){
@@ -251,6 +270,7 @@ function set_prev(){
 		anim_progress = 0;
 	}
 	else{
+        anim_progress = 1;
 		canvases[curr].hidden = false;
 	}
 }
@@ -263,6 +283,7 @@ function set_next(){
 		anim_progress = 0;
 	}
 	else{
+        anim_progress = 1;
 		canvases[curr].hidden = false;
 	}
 }
