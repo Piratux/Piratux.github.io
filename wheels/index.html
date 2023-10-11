@@ -1,0 +1,279 @@
+<!-- This drawing was only tested in Google Chrome -->
+
+<html>
+<div style="text-align: center">
+<body style="background-color:grey;">
+<canvas id="animation_canvas" width="800" height="400"></canvas>
+<br>
+<button onclick="set_drawing1()">Wheel</button>
+<br>
+<button onclick="set_drawing2()">2 Connected wheels</button>
+<script>
+
+let canvas;
+let canvas_ctx;
+let increment = 0;
+let speed = 20/60;
+const Drawing = {
+	Cogwheel: 1,
+	ConnectedCogwheels: 2
+};
+let curr_drawing = Drawing.Cogwheel;
+
+const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+const lerp = (min, max, time) => min + (max - min) * time;
+
+window.onload = function(){
+	canvas = document.getElementById('animation_canvas');
+	canvas_ctx = canvas.getContext('2d');
+	
+	setInterval(draw_everything, 1000/60);
+}
+
+function draw_everything(){
+	canvas_ctx.fillStyle = 'white';
+	canvas_ctx.fillRect(0,0,canvas.width,canvas.height);
+	
+	switch(curr_drawing){
+	case Drawing.Cogwheel:
+		draw_cogwheel(400,200,100,increment,'black','white');
+		break;
+	case Drawing.ConnectedCogwheels:
+		draw_connected_cogwheels();
+		break;
+	}
+	
+	increment = increment + speed;
+}
+
+function set_drawing1(){
+	curr_drawing = Drawing.Cogwheel;
+}
+
+function set_drawing2(){
+	curr_drawing = Drawing.ConnectedCogwheels;
+}
+
+function draw_rotated_rect(x, y, w, h, rot, style){
+	let ctx = canvas_ctx;
+	ctx.save();
+	
+	// Translate to middle
+	ctx.translate(-(w/2), -(h/2));
+	
+	// Perform rotation
+	ctx.translate(x+w/2, y+h/2);
+	ctx.rotate(rot * Math.PI / 180);
+	ctx.translate(-(x+w/2), -(y+h/2));
+	
+	ctx.fillStyle = style;
+	ctx.fillRect(x, y, w, h);
+	
+	ctx.restore();
+}
+
+function draw_circle(x,y,radius,style){
+	let ctx = canvas_ctx;
+	ctx.save();
+	
+	ctx.beginPath();
+	ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+	ctx.fillStyle = style;
+	ctx.fill();
+	
+	ctx.restore();
+}
+
+function draw_cogwheel(x,y,radius,rot,style,bg_style){
+	let ctx = canvas_ctx;
+	ctx.save();
+	
+	let cog_width = 0.2 * radius;
+	let cog_height = 0.3 * radius;
+	let cog_count = 16;
+	let support_width = 0.1 * radius;
+	let support_height = 0.6 * radius;
+	let support_count = 6;
+	
+	ctx.translate(x, y);
+	ctx.rotate(rot * Math.PI / 180);
+	ctx.translate(-x, -y);
+	
+	draw_circle(x,y,radius,style);
+	let radius2 = radius - (cog_height/2) - (0.1 * radius);
+	draw_circle(x,y,radius2,bg_style);
+	let radius3 = 0.25 * radius;
+	draw_circle(x,y,radius3,style);
+	let radius4 = 0.15 * radius;
+	draw_circle(x,y,radius4,bg_style);
+	
+	let curr_rotation = 0;
+	let rotation_step = (2 * Math.PI) / cog_count;
+	for (let i = 0; i < cog_count; i++) {
+		let vec_dir_x = Math.sin(curr_rotation);
+		let vec_dir_y = -Math.cos(curr_rotation);
+		
+		let cog_offset_x = vec_dir_x * radius;
+		let cog_offset_y = vec_dir_y * radius;
+		
+		draw_rotated_rect(x+cog_offset_x, y+cog_offset_y, cog_width, cog_height, curr_rotation * (180 / Math.PI), style);
+		
+		curr_rotation += rotation_step;
+	}
+	
+	curr_rotation = 0;
+	rotation_step = (2 * Math.PI) / support_count;
+	for (let i = 0; i < support_count; i++){
+		let vec_dir_x = Math.sin(curr_rotation);
+		let vec_dir_y = -Math.cos(curr_rotation);
+		
+		let cog_offset_x = vec_dir_x * 0.5 * radius;
+		let cog_offset_y = vec_dir_y * 0.5 * radius;
+		
+		draw_rotated_rect(x+cog_offset_x, y+cog_offset_y, support_width, support_height, curr_rotation * (180 / Math.PI), style);
+		
+		curr_rotation += rotation_step;
+	}
+	
+	ctx.restore();
+}
+
+function draw_cogwheel2(x,y,radius,rot,style,bg_style){
+	let ctx = canvas_ctx;
+	ctx.save();
+	
+	let cog_width = 0.4 * radius;
+	let cog_height = 0.5 * radius;
+	let cog_count = 8;
+	let support_width = 0.2 * radius;
+	let support_height = 0.6 * radius;
+	let support_count = 6;
+	
+	ctx.translate(x, y);
+	ctx.rotate(rot * Math.PI / 180);
+	ctx.translate(-x, -y);
+	
+	draw_circle(x,y,radius,style);
+	let radius2 = radius - (cog_height/2) - (0.1 * radius);
+	draw_circle(x,y,radius2,bg_style);
+	let radius3 = 0.25 * radius;
+	draw_circle(x,y,radius3,style);
+	let radius4 = 0.15 * radius;
+	draw_circle(x,y,radius4,bg_style);
+	
+	let curr_rotation = 0;
+	let rotation_step = (2 * Math.PI) / cog_count;
+	for (let i = 0; i < cog_count; i++) {
+		let vec_dir_x = Math.sin(curr_rotation);
+		let vec_dir_y = -Math.cos(curr_rotation);
+		
+		let cog_offset_x = vec_dir_x * radius;
+		let cog_offset_y = vec_dir_y * radius;
+		
+		draw_rotated_rect(x+cog_offset_x, y+cog_offset_y, cog_width, cog_height, curr_rotation * (180 / Math.PI), style);
+		
+		curr_rotation += rotation_step;
+	}
+	
+	curr_rotation = 0;
+	rotation_step = (2 * Math.PI) / support_count;
+	for (let i = 0; i < support_count; i++){
+		let vec_dir_x = Math.sin(curr_rotation);
+		let vec_dir_y = -Math.cos(curr_rotation);
+		
+		let cog_offset_x = vec_dir_x * 0.5 * radius;
+		let cog_offset_y = vec_dir_y * 0.5 * radius;
+		
+		draw_rotated_rect(x+cog_offset_x, y+cog_offset_y, support_width, support_height, curr_rotation * (180 / Math.PI), style);
+		
+		curr_rotation += rotation_step;
+	}
+	
+	ctx.restore();
+}
+
+function draw_chains(x1, y1, radius1, x2, y2, radius2, time){
+	let chain_piece_radius = 10;
+	let chain_style = "rgba(255, 160, 43, 0.7)"
+	let chain_count = 80;
+	
+	radius1 += chain_piece_radius / 2;
+	radius2 += chain_piece_radius / 2;
+	
+	time *= ((Math.PI * radius1) / 180)
+	
+	// distance between circle tips
+	let length0 = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow((y2 - radius2) - (y1 - radius1), 2));
+	// big wheel sub-circle perimeter
+	let length1 = Math.PI * radius1;
+	// small wheel sub-circle perimeter
+	let length2 = Math.PI * radius2;
+	
+	// big left wheel -> small right wheel
+	let path1_milestone = length0;
+	// small right wheel )
+	let path2_milestone = path1_milestone + length2;
+	// big left wheel <- small right wheel
+	let path3_milestone = path2_milestone + length0;
+	// ( big left wheel
+	let path4_milestone = path3_milestone + length1;
+	let total_length = path4_milestone;
+	
+	
+	for (let i = 0; i < chain_count; i++){
+		let chain_time = (time + lerp(0, total_length, i / chain_count)) % total_length;
+		let chain_x = 0;
+		let chain_y = 0;
+		
+		if (chain_time < path1_milestone){
+			let progress = chain_time / path1_milestone;
+			chain_x = lerp(x1, x2, progress);
+			chain_y = lerp(y1 - radius1, y2 - radius2, progress);
+		}
+		else if (chain_time < path2_milestone){
+			let progress = (chain_time - path1_milestone) / (path2_milestone - path1_milestone);
+			let rotation = lerp(0, Math.PI, progress)
+			chain_x = Math.sin(rotation);
+			chain_y = -Math.cos(rotation);
+			chain_x *= radius2;
+			chain_y *= radius2;
+			chain_x += x2;
+			chain_y += y2;
+		}
+		else if (chain_time < path3_milestone){
+			let progress = (chain_time - path2_milestone) / (path3_milestone - path2_milestone);
+			chain_x = x2 - lerp(0, x2 - x1, progress);
+			chain_y = lerp(y2 + radius2, y1 + radius1, progress);
+		}
+		else if (chain_time < path4_milestone){
+			let progress = (chain_time - path3_milestone) / (path4_milestone - path3_milestone);
+			let rotation = lerp(0, Math.PI, progress)
+			chain_x = -Math.sin(rotation);
+			chain_y = Math.cos(rotation);
+			chain_x *= radius1;
+			chain_y *= radius1;
+			chain_x += x1;
+			chain_y += y1;
+		}
+		
+		draw_circle(chain_x, chain_y, chain_piece_radius, chain_style);
+	}
+}
+
+function draw_connected_cogwheels(){
+	let cogwheel1_x = 200;
+	let cogwheel1_y = 200;
+	let radius1 = 100;
+	let cogwheel2_x = 600;
+	let cogwheel2_y = 200;
+	let radius2 = 50;
+	
+	draw_cogwheel(cogwheel1_x,cogwheel1_y,radius1,increment,'black','white');
+	draw_cogwheel2(cogwheel2_x,cogwheel2_y,radius2,increment*2,'black','white');
+	draw_chains(cogwheel1_x, cogwheel1_y, radius1, cogwheel2_x, cogwheel2_y, radius2, increment);
+}
+
+</script>
+</body>
+</div>
+</html>

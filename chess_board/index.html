@@ -1,0 +1,612 @@
+<html>
+
+<head>
+	<title>Chess board</title>
+	<script type="text/javascript" src="./libs/three.js"></script>
+	<script type="text/javascript" src="./libs/jquery-1.9.0.js"></script>
+	<script type="text/javascript" src="./libs/OrbitControls.js"></script>
+	<script type="text/javascript" src="./libs/TransformControls2.js"></script>
+	<script type="text/javascript" src="./libs/stats.js"></script>
+	<script type="text/javascript" src="./libs/dat.gui.js"></script>
+	<style>
+		body{
+			/* set margin to 0 and overflow to hidden, to go fullscreen */
+			margin: 0;
+			overflow: hidden;
+		}
+	</style>
+</head>
+
+<body>
+
+
+<!-- Div which will hold the Output -->
+<div id="WebGL-output"> </div>
+
+<!-- Javascript code that runs our Three.js examples -->
+<script type="text/javascript">
+
+	// once everything is loaded, we run our Three.js stuff.
+	$(function () {
+
+		// create a scene, that will hold all our elements such as objects, cameras and lights.
+		var scene = new THREE.Scene();
+		var world = new THREE.Group();
+		scene.add(world);
+
+		// create a camera, which defines where we're looking at.
+		var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+		// create a render and set the size
+		var renderer = new THREE.WebGLRenderer();
+
+		renderer.setClearColor(0xEEEEEE, 1.0);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMapEnabled = true;
+		
+		create_table(world);
+	  
+		// position and point the camera to the center of the scene
+		camera.position.set(-100,80,-100);
+		camera.lookAt(scene.position);
+
+		// add lighting
+		var ambient_light = new THREE.AmbientLight( 0x000000 );
+		ambient_light.position.set( -200, 150, 80 );
+		scene.add( ambient_light );
+		
+		var spot_light = new THREE.SpotLight( 0xffffff );
+		spot_light.position.set( -80, 120, -20 );
+		scene.add( spot_light );
+		spot_light.castShadow = true;
+		
+		var gui = new dat.GUI();
+		var gui_params = new function () {
+			this.ambient_light_colour = '#000000';
+			this.spot_light_colour = '#ffffff';
+			this.spot_light_angle = spot_light.angle;
+			this.spot_light_intensity = spot_light.intensity;
+			this.rotate_scene = false;
+			this.scene_rotation_speed = 0.01;
+		}
+		setup_gui(gui_params, ambient_light, spot_light, render);
+
+		// add the output of the renderer to the html element
+		$("#WebGL-output").append(renderer.domElement);
+		
+		// controls for camera
+		const orbit = new THREE.OrbitControls( camera, renderer.domElement );
+		orbit.update();
+		orbit.addEventListener("change", render);
+		
+		// controls for object moving/rotating/scaling
+		const control = new THREE.TransformControls( camera, renderer.domElement, scene.children );
+		control.addEventListener("change", render);
+		
+		// disable camera movement when controling object
+		control.addEventListener("dragging-changed", function(event) { orbit.enabled = !event.value; });
+		scene.add(control);
+		
+		renderer.domElement.addEventListener( "mousedown", function(event){
+			if (control.dragging) return;
+			
+			var ray = new THREE.Raycaster();
+			var pointer = getPointer(event);
+			ray.setFromCamera( pointer, camera );
+
+			// assuming at i = 0 is board
+			for (var i = 1; i < world.children.length; i++){
+				if (world.children[i].isGroup){
+					var intersect = ray.intersectObjects( world.children[i].children, true )[ 0 ] || false;
+					if (intersect){
+						control.attach(world.children[i]);
+						break;
+					}
+				}
+			}
+		} );
+		
+		// print control information to console
+		control.printDefaultControls();
+		
+		setInterval(update, 1000/60);
+		render();
+		
+		function setup_gui(gui_params, ambient_light, spot_light, render){
+			gui.addColor(gui_params, 'ambient_light_colour').onChange(function (e) {
+				ambient_light.color = new THREE.Color(e);
+				render();
+			});
+			
+			gui.addColor(gui_params, 'spot_light_colour').onChange(function (e) {
+				spot_light.color = new THREE.Color(e);
+				render();
+			});
+
+			gui.add(gui_params, 'spot_light_angle', 0, Math.PI * 2).onChange(function (e) {
+				spot_light.angle = e;
+				render();
+			});
+
+			gui.add(gui_params, 'spot_light_intensity', 0, 5).onChange(function (e) {
+				spot_light.intensity = e;
+				render();
+			});
+			
+			gui.add(gui_params, 'rotate_scene');
+			
+			gui.add(gui_params, 'scene_rotation_speed', 0, 0.1);
+		}
+		
+		function getPointer( event ) {
+
+			if ( renderer.domElement.pointerLockElement ) {
+
+				return {
+					x: 0,
+					y: 0,
+					button: event.button
+				};
+
+			} else {
+
+				var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
+
+				var rect = renderer.domElement.getBoundingClientRect();
+
+				return {
+					x: ( pointer.clientX - rect.left ) / rect.width * 2 - 1,
+					y: - ( pointer.clientY - rect.top ) / rect.height * 2 + 1,
+					button: event.button
+				};
+
+			}
+
+		}
+		
+		function update() {
+			if (gui_params.rotate_scene) {
+                world.rotation.y += gui_params.scene_rotation_speed;
+				renderer.render( scene, camera );
+            }
+		}
+ 
+		function render() {
+			renderer.render( scene, camera );
+		}
+		
+		function add_board_part(scene, group, pos_x, pos_y, pos_z, objGeometry, objMaterial) {
+			var obj = new THREE.Mesh(objGeometry, objMaterial);
+			obj.position.set(pos_x, pos_y, pos_z);
+			obj.receiveShadow = true;
+			group.add(obj);
+		}
+		
+		function create_table(scene){
+			// create board
+			var width = 20;
+			var height = 8;
+			var objGeometry = new THREE.BoxGeometry(width, height, width);
+			var boardMaterials = [
+				new THREE.MeshLambertMaterial({color: 0xccc3ab}),
+				new THREE.MeshLambertMaterial({color: 0x242423})
+			];
+			
+			const group = new THREE.Group();
+			for (var x = -4; x < 4; x++){
+				for (var z = -4; z < 4; z++){
+					add_board_part(scene, group, x * width, -height/2, z * width, objGeometry, boardMaterials[(x+z+8)%2]);
+				}
+			}
+			scene.add(group);
+			
+			
+			// create chess pieces
+			<!-- var piece_materials = [ -->
+				<!-- new THREE.MeshLambertMaterial({color: 0xede9df}), -->
+				<!-- new THREE.MeshLambertMaterial({color: 0x4a4a46}) -->
+			<!-- ]; -->
+			
+			var piece_materials = [
+				new THREE.MeshPhysicalMaterial({color: 0xede9df, roughness: 0, reflectivity: 1}),
+				new THREE.MeshPhysicalMaterial({color: 0x4a4a46, roughness: 0, reflectivity: 1})
+			];
+			
+			// add pawns
+			var piece = create_pawn(scene, piece_materials[0]);
+			for(var x = 0; x < 8; x++){
+				add_piece(scene, piece, x, 6, width);
+			}
+			
+			piece = create_pawn(scene, piece_materials[1]);
+			for(var x = 0; x < 8; x++){
+				add_piece(scene, piece, x, 1, width);
+			}
+			
+			// add rooks
+			piece = create_rook(scene, piece_materials[0]);
+			add_piece(scene, piece, 0, 7, width);
+			add_piece(scene, piece, 7, 7, width);
+			
+			piece = create_rook(scene, piece_materials[1]);
+			add_piece(scene, piece, 0, 0, width);
+			add_piece(scene, piece, 7, 0, width);
+			
+			// add knights
+			piece = create_knight(scene, piece_materials[0]);
+			piece.rotation.y -= Math.PI/2;
+			add_piece(scene, piece, 1, 7, width);
+			add_piece(scene, piece, 6, 7, width);
+			
+			piece = create_knight(scene, piece_materials[1]);
+			piece.rotation.y += Math.PI/2;
+			add_piece(scene, piece, 1, 0, width);
+			add_piece(scene, piece, 6, 0, width);
+			
+			// add bishops
+			piece = create_bishop(scene, piece_materials[0]);
+			add_piece(scene, piece, 2, 7, width);
+			add_piece(scene, piece, 5, 7, width);
+			
+			piece = create_bishop(scene, piece_materials[1]);
+			add_piece(scene, piece, 2, 0, width);
+			add_piece(scene, piece, 5, 0, width);
+			
+			// add queen
+			piece = create_queen(scene, piece_materials[0]);
+			add_piece(scene, piece, 3, 7, width);
+			
+			piece = create_queen(scene, piece_materials[1]);
+			add_piece(scene, piece, 3, 0, width);
+			
+			// add king
+			piece = create_king(scene, piece_materials[0]);
+			add_piece(scene, piece, 4, 7, width);
+			
+			piece = create_king(scene, piece_materials[1]);
+			add_piece(scene, piece, 4, 0, width);
+		}
+		
+		function add_piece(scene, piece, x, y, width){
+			piece_clone = piece.clone();
+			piece_clone.position.set((x-4)*width, 0, (y-4)*width);
+			scene.add(piece_clone);
+		}
+		
+		function create_pawn(scene, obj_material){
+			const group = new THREE.Group();
+			group.add(create_group_part(group, 12, 4, obj_material));
+			group.add(create_group_part(group, 5, 8, obj_material));
+			group.add(create_group_part(group, 7, 7, obj_material));
+			return group
+		}
+		
+		function create_rook(scene, obj_material){
+			const group = new THREE.Group();
+			group.add(create_group_part(group, 12, 6, obj_material));
+			group.add(create_group_part(group, 7, 11, obj_material));
+			group.add(create_group_part(group, 10, 2, obj_material));
+			
+			pos_y = 0;
+			for (var i = 0; i < group.children.length; i++){
+				pos_y += group.children[i].geometry.parameters.height;
+			}
+			
+			top_height = 2
+			top_width = 3
+			
+			pos_y += top_height/2 - 0.01 // extra to avoid awkward gap
+			
+			for (var i = 0; i < 4; i++){
+				var obj_geometry = new THREE.BoxGeometry(top_width, top_height, top_width);
+				var obj = new THREE.Mesh(obj_geometry, obj_material);
+				
+				 // extra to avoid awkward gap
+				pos_x = 3.51
+				pos_z = 3.51
+				if (i % 2 == 1) pos_x *= -1;
+				if (i < 2) pos_z *= -1;
+				obj.position.set(pos_x, pos_y, pos_z);
+				group.add(obj);
+			}
+			
+			return group
+		}
+		
+		function create_knight(scene, obj_material){
+			const group = new THREE.Group();
+			group.add(create_group_part(group, 12, 5, obj_material));
+			group.add(create_group_part(group, 6, 9, obj_material));
+			group.add(create_group_part(group, 4, 10, obj_material));
+			
+			pos_y = 0;
+			for (var i = 0; i < group.children.length; i++){
+				pos_y += group.children[i].geometry.parameters.height;
+			}
+			
+			ear_height = 3
+			ear_width = 2
+			
+			pos_y += ear_height/2 - 0.01 // extra to avoid awkward gap
+			
+			// add head as extrude geometry
+            var shape = new THREE.Shape();
+
+			shape.moveTo(-8, 15);
+			shape.lineTo(-6, 15);
+			shape.lineTo(-6, 14);
+			shape.lineTo(4, 14);
+			shape.lineTo(4, 24);
+			shape.lineTo(-2, 24);
+			shape.lineTo(-2, 21);
+			shape.lineTo(-6, 21);
+			shape.lineTo(-6, 20);
+			shape.lineTo(-8, 20);
+			shape.lineTo(-8, 15);
+			
+			var hole1 = new THREE.Path();
+            hole1.absellipse(0, 22, 1, 1, 0, Math.PI * 2, true);
+            shape.holes.push(hole1);
+			
+			var options = {
+				depth: 0,
+				bevelThickness: 4,
+				bevelSize: 0,
+				bevelSegments: 3,
+				bevelEnabled: true,
+				curveSegments: 12,
+				steps: 1
+			};
+			
+			obj_geometry = new THREE.ExtrudeGeometry(shape, options);
+			var obj = new THREE.Mesh(obj_geometry, obj_material);
+			group.add(obj);
+			
+			var obj_geometry = new THREE.BoxGeometry(ear_width, ear_height, ear_width);
+			var obj = new THREE.Mesh(obj_geometry, obj_material);
+			
+			for (var i = 0; i < 2; i++){
+				var obj_geometry = new THREE.BoxGeometry(ear_width, ear_height, ear_width);
+				var obj = new THREE.Mesh(obj_geometry, obj_material);
+				
+				pos_x = 1
+				pos_z = 2.5
+				if (i % 2 == 1) pos_z *= -1;
+				obj.position.set(pos_x, pos_y, pos_z);
+				group.add(obj);
+			}
+			
+			return group
+		}
+		
+		function create_bishop(scene, obj_material){
+			const group = new THREE.Group();
+			group.add(create_group_part(group, 12, 5, obj_material));
+			group.add(create_group_part(group, 6, 14, obj_material));
+			group.add(create_group_part(group, 8, 2, obj_material));
+			group.add(create_group_part(group, 4, 8, obj_material));
+			group.add(create_group_part(group, 2, 2, obj_material));
+			return group
+		}
+		
+		function create_queen(scene, obj_material){
+			const group = new THREE.Group();
+			group.add(create_group_part(group, 12, 6, obj_material));
+			group.add(create_group_part(group, 7, 14, obj_material));
+			group.add(create_group_part(group, 9, 6, obj_material));
+			group.add(create_group_part(group, 5, 4, obj_material));
+			group.add(create_group_part(group, 7, 1.5, obj_material));
+			
+			pos_y = 0;
+			for (var i = 0; i < group.children.length; i++){
+				pos_y += group.children[i].geometry.parameters.height;
+			}
+			
+			top_height = 1
+			top_width = 2
+			
+			pos_y += top_height/2 - 0.02 // extra to avoid awkward gap
+			
+			for (var i = 0; i < 4; i++){
+				var obj_geometry = new THREE.BoxGeometry(top_width, top_height, top_width);
+				var obj = new THREE.Mesh(obj_geometry, obj_material);
+				
+				 // extra to avoid awkward gap
+				pos_x = 2.51
+				pos_z = 2.51
+				if (i % 2 == 1) pos_x *= -1;
+				if (i < 2) pos_z *= -1;
+				obj.position.set(pos_x, pos_y, pos_z);
+				group.add(obj);
+			}
+			
+			var obj_geometry = new THREE.BoxGeometry(top_width, 3*top_height, top_width);
+			var obj = new THREE.Mesh(obj_geometry, obj_material);
+			obj.position.set(0, pos_y, 0);
+			group.add(obj);
+			
+			obj_geometry = new THREE.BoxGeometry(0.5*top_width, 0.5*top_height, 0.5*top_width);
+			obj = new THREE.Mesh(obj_geometry, obj_material);
+			obj.position.set(0, pos_y+2, 0);
+			group.add(obj);
+			
+			return group
+		}
+		
+		function create_king(scene, obj_material){
+			const group = new THREE.Group();
+			
+			var data = [
+			{
+				"x": 0,
+				"y": 0
+			},
+			{
+				"x": 0.38,
+				"y": 0
+			},
+			{
+				"x": 0.3,
+				"y": 0.28
+			},
+			{
+				"x": 0.24,
+				"y": 0.3
+			},
+			{
+				"x": 0.24,
+				"y": 0.34
+			},
+			{
+				"x": 0.3,
+				"y": 0.36
+			},
+			{
+				"x": 0.3,
+				"y": 0.38
+			},
+			{
+				"x": 0.28,
+				"y": 0.4
+			},
+			{
+				"x": 0.26,
+				"y": 0.42
+			},
+			{
+				"x": 0.22,
+				"y": 0.44
+			},
+			{
+				"x": 0.18,
+				"y": 0.46
+			},
+			{
+				"x": 0.16,
+				"y": 0.48
+			},
+			{
+				"x": 0.14,
+				"y": 0.52
+			},
+			{
+				"x": 0.12,
+				"y": 0.86
+			},
+			{
+				"x": 0.12,
+				"y": 1.14
+			},
+			{
+				"x": 0.14,
+				"y": 1.26
+			},
+			{
+				"x": 0.2,
+				"y": 1.38
+			},
+			{
+				"x": 0.26,
+				"y": 1.4
+			},
+			{
+				"x": 0.26,
+				"y": 1.44
+			},
+			{
+				"x": 0.2,
+				"y": 1.46
+			},
+			{
+				"x": 0.14,
+				"y": 1.5
+			},
+			{
+				"x": 0.2,
+				"y": 1.6
+			},
+			{
+				"x": 0.06,
+				"y": 1.64
+			},
+			{
+				"x": 0.1,
+				"y": 1.64
+			},
+			{
+				"x": 0.1,
+				"y": 1.66
+			},
+			{
+				"x": 0,
+				"y": 1.66
+			}];
+			
+			scale = 20
+			const points = [];
+			for (var i = 0; i < data.length; i++){
+				points.push(new THREE.Vector2( scale * data[i].x, scale * data[i].y ));
+			}
+			
+			var obj_geometry = new THREE.LatheGeometry(points, 32);
+			var obj = new THREE.Mesh(obj_geometry, obj_material);
+			group.add(obj);
+			
+			
+			// add head as extrude geometry
+            var shape = new THREE.Shape();
+
+			shape.moveTo(-1, 40);
+			shape.lineTo(1, 40);
+			shape.lineTo(1, 42);
+			shape.lineTo(3, 42);
+			shape.lineTo(3, 44);
+			shape.lineTo(1, 44);
+			shape.bezierCurveTo(2, 47, -2, 47, -1, 44);
+			shape.lineTo(-1, 44);
+			shape.lineTo(-3, 44);
+			shape.lineTo(-3, 42);
+			shape.lineTo(-1, 42);
+			shape.lineTo(-1, 40);
+			
+			var options = {
+				depth: 0,
+				bevelThickness: 0.7,
+				bevelSize: 0,
+				bevelSegments: 3,
+				bevelEnabled: true,
+				curveSegments: 12,
+				steps: 1
+			};
+			
+			obj_geometry = new THREE.ExtrudeGeometry(shape, options);
+			obj = new THREE.Mesh(obj_geometry, obj_material);
+			obj.position.y = scale * data[data.length-1].y - 40;
+			group.add(obj);			
+			
+			return group
+		}
+		
+		function create_group_part(group, width, height, obj_material){
+			pos_y = 0;
+			
+			for (var i = 0; i < group.children.length; i++){
+				pos_y += group.children[i].geometry.parameters.height;
+			}
+		
+			var obj_geometry = new THREE.BoxGeometry(width, height, width);
+			var obj = new THREE.Mesh(obj_geometry, obj_material);
+			pos_y += height/2
+			obj.position.set(0, pos_y, 0);
+			obj.castShadow = true;
+			obj.receiveShadow = true;
+			
+			return obj;
+		}
+	});
+
+
+
+</script>
+</body>
+</html>
