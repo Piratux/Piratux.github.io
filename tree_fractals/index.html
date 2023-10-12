@@ -32,7 +32,7 @@
             <br />
             <input
                 type="checkbox"
-                onclick="toggle_oscillation(this.value)"
+                onclick="toggle_oscillation(this.checked)"
                 style="width:20px;height:20px;"
                 id="scales"
                 name="scales"
@@ -65,6 +65,13 @@
                 type="text"
                 id="angle4"
                 oninput="set_angle(3, this.value)"
+            >
+            <br />
+            <label>Oscillation range:</label>
+            <input
+                type="text"
+                id="oscillation_range"
+                oninput="set_oscillation_range(this.value)"
             >
             <br />
             <label>Animation speed:</label>
@@ -115,14 +122,16 @@
         let stick_offset_y = (canvas_height - stick_height) / 2;
 
         let canvas_offset_x = canvas_width / 2;
-        let canvas_offset_y = canvas_height;
+        let canvas_offset_y = canvas_height - half_stick_width;
 
         let rotations = [0, 0, 0, 0]; // in radians
-        let transform = [0.5, 0, 0, 0.5, 0, -stick_height];
+        let transform = [0.5, 0, 0, 0.5, 0, -stick_height + half_stick_width / 2];
 
         let is_oscillating = false;
         let oscilattion_progress = 0;
         let oscillation_speed = 0.01;
+
+        let oscillation_range = 20; // degrees
 
         const transforms = [
             [0.5, 0, 0, -0.5, 0, 0, Math.PI / 2],
@@ -186,6 +195,7 @@
             initialise_rotations();
             set_animation_speed(0.01)
             set_oscillation_speed(0.01);
+            set_oscillation_range(15);
 
             window.requestAnimationFrame(loop);
         }
@@ -264,6 +274,13 @@
         // Recursive draw 
         function draw_animated_fractal(step) {
             if (step > 0) {
+                ctx.save();
+                if (is_oscillating) {
+                    ctx.rotate(lerp(0, 0 + get_oscillation_rotation_offset(0, step), anim_progress));
+                }
+                else {
+                    ctx.rotate(lerp(0, 0, anim_progress));
+                }
                 draw_tree_stick();
                 step = step - 1;
                 for (let i = 0; i < rotations.length; i++) {
@@ -295,6 +312,7 @@
                     draw_animated_fractal(step);
                     ctx.restore();
                 }
+                ctx.restore();
             }
             else {
                 draw_tree_stick();
@@ -322,19 +340,23 @@
         }
 
         function get_oscillation_rotation_offset(stick_idx, iteration) {
-            let offset_multiplier = degrees_to_radians(20);
+            let offset_multiplier = degrees_to_radians(oscillation_range);
 
-            let idx_offset = stick_idx / 10.0;
-            let iteration_offset = iteration / 6.0;
-            let oscilattion_progress_multiplier = 1 + (stick_idx / 8.0) * (iteration / 9.0);
+            let idx_offset = stick_idx / 8.0;
+            let iteration_offset = iteration / 5.0;
+            // let oscilattion_progress_multiplier = 1 + (stick_idx / 8.0) * (iteration / 9.0);
+            // let value = oscilattion_progress * oscilattion_progress_multiplier + idx_offset;
+            let value = oscilattion_progress + idx_offset;
             // triangle wave function in range [-1; 1] with period 4
-            let range = (oscilattion_progress * oscilattion_progress_multiplier + idx_offset) % 4;
-            if (range < 2) {
-                return offset_multiplier * (range - 1);
-            }
-            else {
-                return offset_multiplier * -(range - 3);
-            }
+            // let range = (oscilattion_progress * oscilattion_progress_multiplier + idx_offset) % 4;
+            // if (range < 2) {
+            //     return offset_multiplier * (range - 1);
+            // }
+            // else {
+            //     return offset_multiplier * -(range - 3);
+            // }
+
+            return offset_multiplier * Math.sin(value);
         }
 
         function set_prev() {
@@ -374,6 +396,11 @@
             oscilattion_progress = 0;
         }
 
+        function set_angle(idx, value) {
+            document.getElementById("angle" + (idx + 1)).value = String(value);
+            rotations[idx] = Number(degrees_to_radians(value));
+        }
+
         function set_animation_speed(value) {
             document.getElementById("animation_speed").value = String(value);
             anim_speed = Number(value);
@@ -384,9 +411,9 @@
             oscillation_speed = Number(value);
         }
 
-        function set_angle(idx, value) {
-            document.getElementById("angle" + (idx + 1)).value = String(value);
-            rotations[idx] = Number(degrees_to_radians(value));
+        function set_oscillation_range(value) {
+            document.getElementById("oscillation_range").value = String(value);
+            oscillation_range = Number(value);
         }
 
     </script>
