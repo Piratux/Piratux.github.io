@@ -3,7 +3,7 @@
 
 <head>
 </head>
-<div style="text-align: center">
+<div style="max-width:500px;margin: auto;">
 
     <body style="background-color:grey;">
         <div id='canvasContainer'></div>
@@ -21,6 +21,7 @@
             >
                 <h2>Next</h2>
             </button>
+            <br />
             <input
                 type="checkbox"
                 onclick="toggle_animation()"
@@ -28,7 +29,58 @@
                 id="scales"
                 name="scales"
                 autocomplete="off"
-            >Animate
+            >Animate transformations
+            <br />
+            <input
+                type="checkbox"
+                onclick="toggle_oscillation(this.value)"
+                style="width:20px;height:20px;"
+                id="scales"
+                name="scales"
+                autocomplete="off"
+            >Oscillate
+            <br />
+            <label>Angle 1:</label>
+            <input
+                type="text"
+                id="angle1"
+                oninput="set_angle(0, this.value)"
+            >
+            <br />
+            <label>Angle 2:</label>
+            <input
+                type="text"
+                id="angle2"
+                oninput="set_angle(1, this.value)"
+            >
+            <br />
+            <label>Angle 3:</label>
+            <input
+                type="text"
+                id="angle3"
+                oninput="set_angle(2, this.value)"
+            >
+            <br />
+            <label>Angle 4:</label>
+            <input
+                type="text"
+                id="angle4"
+                oninput="set_angle(3, this.value)"
+            >
+            <br />
+            <label>Animation speed:</label>
+            <input
+                type="text"
+                id="animation_speed"
+                oninput="set_animation_speed(this.value)"
+            >
+            <br />
+            <label>Oscillation speed:</label>
+            <input
+                type="text"
+                id="oscillation_speed"
+                oninput="set_oscillation_speed(this.value)"
+            >
     </body>
     <script type="application/javascript">
 
@@ -40,20 +92,19 @@
         const lerp = (from, to, t) => from + (to - from) * t;
         const degrees_to_radians = (degrees) => degrees * (Math.PI / 180.0);
 
-        var curr = 0;
-        var max_it = 6;
-        var ctx;
-        var canvases = [];
-        var anim_canvas;
+        let curr = 0;
+        let max_it = 6;
+        let ctx;
+        let canvases = [];
+        let anim_canvas;
 
-        var curr_colour = 'black';
-        var start_step = 0;
+        let curr_colour = 'black';
+        let start_step = 0;
 
         // animation parameters
-        var anim_toggled = 0;
-        var anim_speed = 0.005;
-        var anim_speed = 0.05;
-        var anim_progress = 0;
+        let anim_toggled = 0;
+        let anim_speed = 0.01;
+        let anim_progress = 0;
 
         let canvas_width = 500;
         let canvas_height = 500;
@@ -70,11 +121,16 @@
         let canvas_offset_y = canvas_height;
 
         // let rotations = [degrees_to_radians(-10), degrees_to_radians(20)];
-        let rotations = [degrees_to_radians(-10), degrees_to_radians(25)];
+        // let rotations = [degrees_to_radians(-10), degrees_to_radians(25)];
+        let rotations = [degrees_to_radians(0), degrees_to_radians(0), degrees_to_radians(0), degrees_to_radians(0)];
         // let transform = [0.5, 0, 0, 0.5, canvas_width / 2.0, stick_offset_y + stick_height - (stick_width / 2)];
         // let transform = [0.5, 0, 0, 0.5, canvas_width / 2.0, 0];
         // let transform = [0.5, 0, 0, 0.5, 0, 0];
         let transform = [0.5, 0, 0, 0.5, 0, -stick_height];
+
+        let is_oscillating = false;
+        let oscilattion_progress = 0;
+        let oscillation_speed = 0.01;
 
         const transforms = [
             [0.5, 0, 0, -0.5, 0, 0, Math.PI / 2],
@@ -94,9 +150,9 @@
             // pre-generate static fractal images
 
             // +1 for animation canvas
-            for (var i = 0; i <= max_it + 1; i++) {
+            for (let i = 0; i <= max_it + 1; i++) {
                 canvases.push(document.createElement('canvas'));
-                var c = canvases[canvases.length - 1];
+                let c = canvases[canvases.length - 1];
                 ctx = c.getContext('2d');
                 // ctx.moveTo(canvas_width/2, canvas_height/2);
                 c.width = canvas_width;
@@ -114,40 +170,61 @@
                 ctx.closePath();
                 ctx.stroke();
 
-                if (i != max_it + 1) {
-                    curr_colour = 'black';
-                    start_step = i - 1;
-                    draw_fractal(i);
-                    // anim_progress = 1;
-                    // draw_animated_fractal(i);
-                }
+                clear_screen();
+
+                // if (i != max_it + 1) {
+                //     curr_colour = 'black';
+                //     start_step = i - 1;
+                //     // draw_fractal(i);
+                //     anim_progress = 1;
+                //     draw_animated_fractal(i);
+                // }
 
                 // offset to middle
                 ctx.translate(canvas_offset_x, canvas_offset_y);
-
-                clear_screen();
             }
 
             anim_canvas = canvases[max_it + 1];
 
             canvases[0].hidden = false;
 
-            // toggle_animation();
+            anim_canvas.hidden = true;
+            canvases[curr].hidden = false;
+            ctx = canvases[curr].getContext('2d');
+
+            initialise_rotations();
+            set_animation_speed(0.01)
+            set_oscillation_speed(0.01);
 
             window.requestAnimationFrame(loop);
         }
 
         function loop() {
-            // console.log('test' + Math.random(1000));
-            if (anim_toggled == 1) {
-                clear_screen();
+            clear_screen();
 
-                start_step = curr - 1;
-                draw_animated_fractal(curr);
-                anim_progress = clamp(anim_progress + anim_speed, 0, 1);
+            if (is_oscillating) {
+                oscilattion_progress += oscillation_speed;
             }
 
+            start_step = curr - 1;
+            draw_animated_fractal(curr);
+            anim_progress = clamp(anim_progress + anim_speed, 0, 1);
+
             window.requestAnimationFrame(loop);
+        }
+
+        function initialise_rotations() {
+            // let rotations = [
+            //     degrees_to_radians(15),
+            //     degrees_to_radians(-30),
+            //     degrees_to_radians(45),
+            //     degrees_to_radians(-55)
+            // ];
+
+            set_angle(0, 15);
+            set_angle(1, -30);
+            set_angle(2, 45);
+            set_angle(3, -55);
         }
 
         function clear_screen() {
@@ -205,30 +282,8 @@
             if (step > 0) {
                 draw_tree_stick();
                 step = step - 1;
-                for (var i = 0; i < rotations.length; i++) {
-                    // draw_tree_stick();
-
+                for (let i = 0; i < rotations.length; i++) {
                     ctx.save();
-
-                    // ctx.transform(
-                    //     1, 
-                    //     0,
-                    //     0,
-                    //     1,
-                    //     lerp(0, transforms[i][4], anim_progress),
-                    //     lerp(0, transforms[i][5], anim_progress)
-                    // );
-                    // ctx.rotate(lerp(0, transforms[i][6], anim_progress));
-                    // ctx.transform(
-                    //     lerp(1, transforms[i][0], anim_progress),
-                    //     lerp(0, transforms[i][1], anim_progress),
-                    //     lerp(0, transforms[i][2], anim_progress),
-                    //     lerp(1, transforms[i][3], anim_progress),
-                    //     0,
-                    //     0
-                    // );
-
-
                     ctx.transform(
                         1,
                         0,
@@ -237,7 +292,13 @@
                         lerp(0, transform[4], anim_progress),
                         lerp(0, transform[5], anim_progress)
                     );
-                    ctx.rotate(lerp(0, rotations[i], anim_progress));
+                    if (is_oscillating) {
+                        ctx.rotate(lerp(0, rotations[i] + get_oscillation_rotation_offset(i, step), anim_progress));
+                    }
+                    else {
+                        ctx.rotate(lerp(0, rotations[i], anim_progress));
+                    }
+
                     ctx.transform(
                         lerp(1, transform[0], anim_progress),
                         lerp(0, transform[1], anim_progress),
@@ -273,16 +334,26 @@
             // ctx.closePath();
             // ctx.fill();
 
-
-            // ctx.moveTo(canvas_width/2, canvas_height/2);
             ctx.fillRect(-half_stick_width, -stick_height, stick_width, stick_height)
-            // ctx.fillRect(-stick_width/2, -stick_height/2, stick_width, stick_height)
+        }
 
+        function get_oscillation_rotation_offset(stick_idx, iteration) {
+            let offset_multiplier = degrees_to_radians(20);
 
+            let idx_offset = stick_idx / 10.0;
+            let iteration_offset = iteration / 6.0;
+            let oscilattion_progress_multiplier = 1 + (stick_idx / 8.0) * (iteration / 9.0);
+            // triangle wave function in range [-1; 1] with period 4
+            let range = (oscilattion_progress * oscilattion_progress_multiplier + idx_offset) % 4;
+            if (range < 2) {
+                return offset_multiplier * (range - 1);
+            }
+            else {
+                return offset_multiplier * -(range - 3);
+            }
         }
 
         function set_prev() {
-            canvases[curr].hidden = true;
             curr = clamp(curr - 1, 0, max_it);
 
             if (anim_toggled == 1) {
@@ -290,12 +361,10 @@
             }
             else {
                 anim_progress = 1;
-                canvases[curr].hidden = false;
             }
         }
 
         function set_next() {
-            canvases[curr].hidden = true;
             curr = clamp(curr + 1, 0, max_it);
 
             if (anim_toggled == 1) {
@@ -303,7 +372,6 @@
             }
             else {
                 anim_progress = 1;
-                canvases[curr].hidden = false;
             }
         }
 
@@ -311,16 +379,30 @@
             anim_toggled = 1 - anim_toggled;
             if (anim_toggled == 1) {
                 anim_progress = 0;
-                anim_canvas.hidden = false;
-                canvases[curr].hidden = true;
-                ctx = anim_canvas.getContext('2d');
             }
             else {
                 anim_progress = 1;
-                anim_canvas.hidden = true;
-                canvases[curr].hidden = false;
-                ctx = canvases[curr].getContext('2d');
             }
+        }
+
+        function toggle_oscillation(value) {
+            is_oscillating = value;
+            oscilattion_progress = 0;
+        }
+
+        function set_animation_speed(value) {
+            document.getElementById("animation_speed").value = String(value);
+            anim_speed = Number(value);
+        }
+
+        function set_oscillation_speed(value) {
+            document.getElementById("oscillation_speed").value = String(value);
+            oscillation_speed = Number(value);
+        }
+
+        function set_angle(idx, value) {
+            document.getElementById("angle" + (idx + 1)).value = String(value);
+            rotations[idx] = Number(degrees_to_radians(value));
         }
 
     </script>
