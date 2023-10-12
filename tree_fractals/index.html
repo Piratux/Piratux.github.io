@@ -7,7 +7,6 @@
 
     <body style="background-color:grey;">
         <div id='canvasContainer'></div>
-        <br>
         <h2>
             <button
                 onclick="set_prev()"
@@ -108,8 +107,6 @@
 
         let canvas_width = 500;
         let canvas_height = 500;
-        // let stick_width = 300;
-        // let stick_height = 500;
         let stick_width = 50;
         let stick_height = 200;
         let half_stick_width = stick_width / 2;
@@ -120,12 +117,7 @@
         let canvas_offset_x = canvas_width / 2;
         let canvas_offset_y = canvas_height;
 
-        // let rotations = [degrees_to_radians(-10), degrees_to_radians(20)];
-        // let rotations = [degrees_to_radians(-10), degrees_to_radians(25)];
-        let rotations = [degrees_to_radians(0), degrees_to_radians(0), degrees_to_radians(0), degrees_to_radians(0)];
-        // let transform = [0.5, 0, 0, 0.5, canvas_width / 2.0, stick_offset_y + stick_height - (stick_width / 2)];
-        // let transform = [0.5, 0, 0, 0.5, canvas_width / 2.0, 0];
-        // let transform = [0.5, 0, 0, 0.5, 0, 0];
+        let rotations = [0, 0, 0, 0]; // in radians
         let transform = [0.5, 0, 0, 0.5, 0, -stick_height];
 
         let is_oscillating = false;
@@ -154,7 +146,6 @@
                 canvases.push(document.createElement('canvas'));
                 let c = canvases[canvases.length - 1];
                 ctx = c.getContext('2d');
-                // ctx.moveTo(canvas_width/2, canvas_height/2);
                 c.width = canvas_width;
                 c.height = canvas_height;
                 c.hidden = true;
@@ -214,13 +205,6 @@
         }
 
         function initialise_rotations() {
-            // let rotations = [
-            //     degrees_to_radians(15),
-            //     degrees_to_radians(-30),
-            //     degrees_to_radians(45),
-            //     degrees_to_radians(-55)
-            // ];
-
             set_angle(0, 15);
             set_angle(1, -30);
             set_angle(2, 45);
