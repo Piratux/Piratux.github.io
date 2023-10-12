@@ -1,308 +1,328 @@
 <!DOCTYPE html>
 <html>
- <head>
- </head>
- <div style="text-align: center">
-<body style="background-color:grey;">
- <div id='canvasContainer'></div>
-   <br>
-   <h2>
-	<button onclick="set_prev()" style="width:80px;height:60px;"><h2>Prev</h2></button>
-	<button onclick="set_next()" style="width:80px;height:60px;"><h2>Next</h2></button>
-	<input type="checkbox" onclick="toggle_animation()" style="width:20px;height:20px;" id="scales" name="scales" autocomplete="off">Animate transformations
- </body>
-  <script type="application/javascript">
 
-document.addEventListener("DOMContentLoaded", function(event) {
-	init();
-});
+<head>
+</head>
+<div style="text-align: center">
 
-const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
-const lerp = (from, to, t) => from + (to - from) * t;
-const degrees_to_radians = (degrees) => degrees * (Math.PI / 180.0);
+    <body style="background-color:grey;">
+        <div id='canvasContainer'></div>
+        <br>
+        <h2>
+            <button
+                onclick="set_prev()"
+                style="width:80px;height:60px;"
+            >
+                <h2>Prev</h2>
+            </button>
+            <button
+                onclick="set_next()"
+                style="width:80px;height:60px;"
+            >
+                <h2>Next</h2>
+            </button>
+            <input
+                type="checkbox"
+                onclick="toggle_animation()"
+                style="width:20px;height:20px;"
+                id="scales"
+                name="scales"
+                autocomplete="off"
+            >Animate
+    </body>
+    <script type="application/javascript">
 
-var curr = 0;
-var max_it = 6;
-var ctx;
-var canvases = [];
-var anim_canvas;
+        document.addEventListener("DOMContentLoaded", function (event) {
+            init();
+        });
 
-var curr_colour = 'black';
-var start_step = 0;
+        const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+        const lerp = (from, to, t) => from + (to - from) * t;
+        const degrees_to_radians = (degrees) => degrees * (Math.PI / 180.0);
 
-// animation parameters
-var anim_toggled = 0;
-var anim_speed = 0.005;
-var anim_speed = 0.05;
-var anim_progress = 0;
+        var curr = 0;
+        var max_it = 6;
+        var ctx;
+        var canvases = [];
+        var anim_canvas;
 
-let canvas_width = 500;
-let canvas_height = 500;
-// let stick_width = 300;
-// let stick_height = 500;
-let stick_width = 50;
-let stick_height = 200;
-let half_stick_width = stick_width/2;
-let halfstick_height = stick_height/2;
-let stick_offset_x = (canvas_width - stick_width) / 2;
-let stick_offset_y = (canvas_height - stick_height) / 2;
+        var curr_colour = 'black';
+        var start_step = 0;
 
-let canvas_offset_x = canvas_width/2;
-let canvas_offset_y = canvas_height;
+        // animation parameters
+        var anim_toggled = 0;
+        var anim_speed = 0.005;
+        var anim_speed = 0.05;
+        var anim_progress = 0;
 
-// let rotations = [degrees_to_radians(-10), degrees_to_radians(20)];
-let rotations = [degrees_to_radians(-10), degrees_to_radians(25)];
-// let transform = [0.5, 0, 0, 0.5, canvas_width / 2.0, stick_offset_y + stick_height - (stick_width / 2)];
-// let transform = [0.5, 0, 0, 0.5, canvas_width / 2.0, 0];
-// let transform = [0.5, 0, 0, 0.5, 0, 0];
-let transform = [0.5, 0, 0, 0.5, 0, -stick_height];
+        let canvas_width = 500;
+        let canvas_height = 500;
+        // let stick_width = 300;
+        // let stick_height = 500;
+        let stick_width = 50;
+        let stick_height = 200;
+        let half_stick_width = stick_width / 2;
+        let halfstick_height = stick_height / 2;
+        let stick_offset_x = (canvas_width - stick_width) / 2;
+        let stick_offset_y = (canvas_height - stick_height) / 2;
 
-const transforms = [
-	[0.5, 0, 0, -0.5, 0, 0, Math.PI/2],
-	[0.5, 0, 0, -0.5, 250, 250, 0],
-	[0.25, 0, 0, 0.25, 62.5, 312.5, 0],
-	[0.5, 0, 0, 0.5, 250, 500, -Math.PI/2]
-];
+        let canvas_offset_x = canvas_width / 2;
+        let canvas_offset_y = canvas_height;
 
-const transform_colours = [
-	'purple',
-	'green',
-	'red',
-	'orange'
-];
+        // let rotations = [degrees_to_radians(-10), degrees_to_radians(20)];
+        let rotations = [degrees_to_radians(-10), degrees_to_radians(25)];
+        // let transform = [0.5, 0, 0, 0.5, canvas_width / 2.0, stick_offset_y + stick_height - (stick_width / 2)];
+        // let transform = [0.5, 0, 0, 0.5, canvas_width / 2.0, 0];
+        // let transform = [0.5, 0, 0, 0.5, 0, 0];
+        let transform = [0.5, 0, 0, 0.5, 0, -stick_height];
 
-function init() {
-	// pre-generate static fractal images
+        const transforms = [
+            [0.5, 0, 0, -0.5, 0, 0, Math.PI / 2],
+            [0.5, 0, 0, -0.5, 250, 250, 0],
+            [0.25, 0, 0, 0.25, 62.5, 312.5, 0],
+            [0.5, 0, 0, 0.5, 250, 500, -Math.PI / 2]
+        ];
 
-	// +1 for animation canvas
-	for (var i = 0; i <= max_it + 1; i++){
-		canvases.push(document.createElement('canvas'));
-		var c = canvases[canvases.length - 1];
-		ctx = c.getContext('2d');
-        // ctx.moveTo(canvas_width/2, canvas_height/2);
-		c.width = canvas_width;
-		c.height = canvas_height;
-		c.hidden = true;
-		canvasContainer.appendChild(c);
-		
-		// Draw border
-		ctx.style = 'black';
-		ctx.beginPath();
-		ctx.moveTo(0,0);
-		ctx.lineTo(canvas_width,0);
-		ctx.lineTo(canvas_width,canvas_height);
-		ctx.lineTo(0,canvas_height);
-		ctx.closePath();
-		ctx.stroke();
-		
-		if(i != max_it + 1){
-			curr_colour = 'black';
-			start_step = i-1;
-			draw_fractal(i);
-            // anim_progress = 1;
-            // draw_animated_fractal(i);
-		}
+        const transform_colours = [
+            'purple',
+            'green',
+            'red',
+            'orange'
+        ];
 
-        // offset to middle
-        ctx.translate(canvas_offset_x, canvas_offset_y);
+        function init() {
+            // pre-generate static fractal images
 
-        clear_screen();
-	}
-	
-	anim_canvas = canvases[max_it+1];
-	
-	canvases[0].hidden = false;
+            // +1 for animation canvas
+            for (var i = 0; i <= max_it + 1; i++) {
+                canvases.push(document.createElement('canvas'));
+                var c = canvases[canvases.length - 1];
+                ctx = c.getContext('2d');
+                // ctx.moveTo(canvas_width/2, canvas_height/2);
+                c.width = canvas_width;
+                c.height = canvas_height;
+                c.hidden = true;
+                canvasContainer.appendChild(c);
 
-    // toggle_animation();
-	
-	window.requestAnimationFrame(loop);
-}
+                // Draw border
+                ctx.style = 'black';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(canvas_width, 0);
+                ctx.lineTo(canvas_width, canvas_height);
+                ctx.lineTo(0, canvas_height);
+                ctx.closePath();
+                ctx.stroke();
 
-function loop(){
-    // console.log('test' + Math.random(1000));
-	if (anim_toggled == 1){
-        clear_screen();
-		
-		start_step = curr-1;
-		draw_animated_fractal(curr);
-		anim_progress = clamp(anim_progress + anim_speed, 0, 1);
-	}
-	
-	window.requestAnimationFrame(loop);
-}
+                if (i != max_it + 1) {
+                    curr_colour = 'black';
+                    start_step = i - 1;
+                    draw_fractal(i);
+                    // anim_progress = 1;
+                    // draw_animated_fractal(i);
+                }
 
-function clear_screen(){
-    ctx.fillStyle = 'white';
-    ctx.fillRect(-canvas_offset_x, -canvas_offset_y, canvas_width, canvas_height);
-}
+                // offset to middle
+                ctx.translate(canvas_offset_x, canvas_offset_y);
 
-// Recursive draw
-// NOTE: I wanted to merge this function with "draw_fractal()" function, but colours don't work properly and I can't find out why
-function draw_fractal(step) {
-	if (step > 0) {
-		step = step-1; 
-		ctx.save();
-		ctx.save();
-		ctx.save();
+                clear_screen();
+            }
 
-		// top left
-		if (start_step == step){
-			curr_colour = 'purple';
-		}
-		ctx.transform(0, 0.5, 0.5, 0, 0, 0);
-		draw_fractal(step); 
-		ctx.restore();
+            anim_canvas = canvases[max_it + 1];
 
-		// top right
-		if (start_step == step){
-			curr_colour = 'green';
-		}
-		ctx.transform(0.5, 0, 0, -0.5, 250, 250);
-		draw_fractal(step); 
-		ctx.restore();
-		
-		// bottom left
-		if (start_step == step){
-			curr_colour = 'red';
-		}
-		ctx.transform(0.25, 0, 0, 0.25, 62.5, 312.5);
-		draw_fractal(step);
-		ctx.restore();
-		
-		// bottom right
-		if (start_step == step){
-			curr_colour = 'orange';
-		}
-		ctx.transform(0, -0.5, 0.5, 0, 250, 500);
-		draw_fractal(step);
-	}
-	else {
-		draw_tree_stick();
-	}
-}
+            canvases[0].hidden = false;
 
-// Recursive draw 
-function draw_animated_fractal(step) {
-	if (step > 0) {
-        draw_tree_stick();
-		step = step-1;
-		for(var i = 0; i < rotations.length; i++){
-            // draw_tree_stick();
+            // toggle_animation();
 
-			ctx.save();
-			
-			// ctx.transform(
-            //     1, 
-            //     0,
-            //     0,
-            //     1,
-            //     lerp(0, transforms[i][4], anim_progress),
-            //     lerp(0, transforms[i][5], anim_progress)
-            // );
-            // ctx.rotate(lerp(0, transforms[i][6], anim_progress));
-            // ctx.transform(
-            //     lerp(1, transforms[i][0], anim_progress),
-            //     lerp(0, transforms[i][1], anim_progress),
-            //     lerp(0, transforms[i][2], anim_progress),
-            //     lerp(1, transforms[i][3], anim_progress),
-            //     0,
-            //     0
-            // );
+            window.requestAnimationFrame(loop);
+        }
 
-            
-            ctx.transform(
-                1, 
-                0,
-                0,
-                1,
-                lerp(0, transform[4], anim_progress),
-                lerp(0, transform[5], anim_progress)
-            );
-            ctx.rotate(lerp(0, rotations[i], anim_progress));
-            ctx.transform(
-                lerp(1, transform[0], anim_progress),
-                lerp(0, transform[1], anim_progress),
-                lerp(0, transform[2], anim_progress),
-                lerp(1, transform[3], anim_progress),
-                0,
-                0
-            );
-			
-			draw_animated_fractal(step); 
-			ctx.restore();
-		}
-	}
-	else {
-		draw_tree_stick();
-	}
-}
+        function loop() {
+            // console.log('test' + Math.random(1000));
+            if (anim_toggled == 1) {
+                clear_screen();
 
-function draw_tree_stick(){
-	ctx.fillStyle = curr_colour;
-	ctx.beginPath();
+                start_step = curr - 1;
+                draw_animated_fractal(curr);
+                anim_progress = clamp(anim_progress + anim_speed, 0, 1);
+            }
 
-	// ctx.moveTo(0/2,0/2);
-	// ctx.lineTo(200/2,0/2);
-	// ctx.lineTo(200/2,100/2);
-	// ctx.lineTo(100/2,100/2);
-	// ctx.lineTo(100/2,200/2);
-	// ctx.lineTo(200/2,200/2);
-	// ctx.lineTo(200/2,300/2);
-	// ctx.lineTo(100/2,300/2);
-	// ctx.lineTo(100/2,500/2);
-	// ctx.lineTo(0/2,500/2);
-    // ctx.closePath();
-    // ctx.fill();
+            window.requestAnimationFrame(loop);
+        }
+
+        function clear_screen() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(-canvas_offset_x, -canvas_offset_y, canvas_width, canvas_height);
+        }
+
+        // Recursive draw
+        // NOTE: I wanted to merge this function with "draw_fractal()" function, but colours don't work properly and I can't find out why
+        function draw_fractal(step) {
+            if (step > 0) {
+                step = step - 1;
+                ctx.save();
+                ctx.save();
+                ctx.save();
+
+                // top left
+                if (start_step == step) {
+                    curr_colour = 'purple';
+                }
+                ctx.transform(0, 0.5, 0.5, 0, 0, 0);
+                draw_fractal(step);
+                ctx.restore();
+
+                // top right
+                if (start_step == step) {
+                    curr_colour = 'green';
+                }
+                ctx.transform(0.5, 0, 0, -0.5, 250, 250);
+                draw_fractal(step);
+                ctx.restore();
+
+                // bottom left
+                if (start_step == step) {
+                    curr_colour = 'red';
+                }
+                ctx.transform(0.25, 0, 0, 0.25, 62.5, 312.5);
+                draw_fractal(step);
+                ctx.restore();
+
+                // bottom right
+                if (start_step == step) {
+                    curr_colour = 'orange';
+                }
+                ctx.transform(0, -0.5, 0.5, 0, 250, 500);
+                draw_fractal(step);
+            }
+            else {
+                draw_tree_stick();
+            }
+        }
+
+        // Recursive draw 
+        function draw_animated_fractal(step) {
+            if (step > 0) {
+                draw_tree_stick();
+                step = step - 1;
+                for (var i = 0; i < rotations.length; i++) {
+                    // draw_tree_stick();
+
+                    ctx.save();
+
+                    // ctx.transform(
+                    //     1, 
+                    //     0,
+                    //     0,
+                    //     1,
+                    //     lerp(0, transforms[i][4], anim_progress),
+                    //     lerp(0, transforms[i][5], anim_progress)
+                    // );
+                    // ctx.rotate(lerp(0, transforms[i][6], anim_progress));
+                    // ctx.transform(
+                    //     lerp(1, transforms[i][0], anim_progress),
+                    //     lerp(0, transforms[i][1], anim_progress),
+                    //     lerp(0, transforms[i][2], anim_progress),
+                    //     lerp(1, transforms[i][3], anim_progress),
+                    //     0,
+                    //     0
+                    // );
 
 
-    // ctx.moveTo(canvas_width/2, canvas_height/2);
-    ctx.fillRect(-half_stick_width, -stick_height, stick_width, stick_height)
-    // ctx.fillRect(-stick_width/2, -stick_height/2, stick_width, stick_height)
-	
-	
-}
+                    ctx.transform(
+                        1,
+                        0,
+                        0,
+                        1,
+                        lerp(0, transform[4], anim_progress),
+                        lerp(0, transform[5], anim_progress)
+                    );
+                    ctx.rotate(lerp(0, rotations[i], anim_progress));
+                    ctx.transform(
+                        lerp(1, transform[0], anim_progress),
+                        lerp(0, transform[1], anim_progress),
+                        lerp(0, transform[2], anim_progress),
+                        lerp(1, transform[3], anim_progress),
+                        0,
+                        0
+                    );
 
-function set_prev(){
-	canvases[curr].hidden = true;
-	curr = clamp(curr - 1, 0, max_it);
-	
-	if (anim_toggled == 1){
-		anim_progress = 0;
-	}
-	else{
-        anim_progress = 1;
-		canvases[curr].hidden = false;
-	}
-}
+                    draw_animated_fractal(step);
+                    ctx.restore();
+                }
+            }
+            else {
+                draw_tree_stick();
+            }
+        }
 
-function set_next(){
-	canvases[curr].hidden = true;
-	curr = clamp(curr + 1, 0, max_it);
-	
-	if (anim_toggled == 1){
-		anim_progress = 0;
-	}
-	else{
-        anim_progress = 1;
-		canvases[curr].hidden = false;
-	}
-}
+        function draw_tree_stick() {
+            ctx.fillStyle = curr_colour;
+            ctx.beginPath();
 
-function toggle_animation(){
-	anim_toggled = 1 - anim_toggled;
-	if (anim_toggled == 1){
-		anim_progress = 0;
-		anim_canvas.hidden = false;
-		canvases[curr].hidden = true;
-		ctx = anim_canvas.getContext('2d');
-	}
-	else{
-		anim_progress = 1;
-		anim_canvas.hidden = true;
-		canvases[curr].hidden = false;
-		ctx = canvases[curr].getContext('2d');
-	}
-}
+            // ctx.moveTo(0/2,0/2);
+            // ctx.lineTo(200/2,0/2);
+            // ctx.lineTo(200/2,100/2);
+            // ctx.lineTo(100/2,100/2);
+            // ctx.lineTo(100/2,200/2);
+            // ctx.lineTo(200/2,200/2);
+            // ctx.lineTo(200/2,300/2);
+            // ctx.lineTo(100/2,300/2);
+            // ctx.lineTo(100/2,500/2);
+            // ctx.lineTo(0/2,500/2);
+            // ctx.closePath();
+            // ctx.fill();
 
-</script>
+
+            // ctx.moveTo(canvas_width/2, canvas_height/2);
+            ctx.fillRect(-half_stick_width, -stick_height, stick_width, stick_height)
+            // ctx.fillRect(-stick_width/2, -stick_height/2, stick_width, stick_height)
+
+
+        }
+
+        function set_prev() {
+            canvases[curr].hidden = true;
+            curr = clamp(curr - 1, 0, max_it);
+
+            if (anim_toggled == 1) {
+                anim_progress = 0;
+            }
+            else {
+                anim_progress = 1;
+                canvases[curr].hidden = false;
+            }
+        }
+
+        function set_next() {
+            canvases[curr].hidden = true;
+            curr = clamp(curr + 1, 0, max_it);
+
+            if (anim_toggled == 1) {
+                anim_progress = 0;
+            }
+            else {
+                anim_progress = 1;
+                canvases[curr].hidden = false;
+            }
+        }
+
+        function toggle_animation() {
+            anim_toggled = 1 - anim_toggled;
+            if (anim_toggled == 1) {
+                anim_progress = 0;
+                anim_canvas.hidden = false;
+                canvases[curr].hidden = true;
+                ctx = anim_canvas.getContext('2d');
+            }
+            else {
+                anim_progress = 1;
+                anim_canvas.hidden = true;
+                canvases[curr].hidden = false;
+                ctx = canvases[curr].getContext('2d');
+            }
+        }
+
+    </script>
+
 </html>
