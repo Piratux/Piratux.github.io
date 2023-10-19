@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+</head>
+<div style="max-width:500px;margin: auto;">
+
+    <body style="background-color:grey;">
+        <div id='canvasContainer'></div>
+        <h2>
+            <button
+                onclick="set_prev()"
+                style="width:80px;height:60px;"
+            >
+                <h2>Prev</h2>
+            </button>
+            <button
+                onclick="set_next()"
+                style="width:80px;height:60px;"
+            >
+                <h2>Next</h2>
+            </button>
+            <br />
+            <button
+                onclick="generate_seed()"
+                style="width:180px;height:60px;"
+            >
+                <h2>Generate seed</h2>
+            </button>
+            <br />
+            <label>Rule 1:</label>
+            F &rarr;
+            <input
+                type="text"
+                id="rule0"
+                oninput="set_rule(0, this.value)"
+            >
+            <br />
+            <label>Rule 2:</label>
+            F &rarr;
+            <input
+                type="text"
+                id="rule1"
+                oninput="set_rule(1, this.value)"
+            >
+            <br />
+            <label>Rule 3:</label>
+            F &rarr;
+            <input
+                type="text"
+                id="rule2"
+                oninput="set_rule(2, this.value)"
+            >
+            <br />
+            <label>Rotation degrees:</label>
+            <input
+                type="text"
+                id="rotation"
+                oninput="set_rotation(this.value)"
+            >
+            <br />
+            <label>Seed:</label>
+            <input
+                type="text"
+                id="seed"
+                oninput="set_seed(this.value)"
+            >
+
+            <h2>
+                Explanation
+            </h2>
+            <p>
+                This is L system fractals with branches demo. More info about L systems can be found here: <a
+                    href="https://en.wikipedia.org/wiki/L-system"
+                    target="_blank"
+                >https://en.wikipedia.org/wiki/L-system</a>
+            </p>
+            <p>
+                In this demo, each rule has 1/3 chance to be chosen and applied.
+            </p>
+            <h3>
+                Possible rule symbols
+            </h3>
+            <p>
+                F: During last recursion step, line is drawn and pointer is moved forward at end of the line.
+            </p>
+            <p>
+                +: Rotation transform is applied clockwise.
+            </p>
+            <p>
+                -: Rotation transform is applied anti-clockwise.
+            </p>
+            <p>
+                [: Pointer and rotation transform is pushed onto stack.
+            </p>
+            <p>
+                ]: Pointer and rotation transform is popped from stack.
+            </p>
+
+    </body>
+    <script type="application/javascript">
+        class Random {
+            static N = 624;
+            static M = 397;
+            static MATRIX_A = 0x9908b0df;
+            /* constant vector a */
+            static UPPER_MASK = 0x80000000;
+            /* most significant w-r bits */
+            static LOWER_MASK = 0x7fffffff;
+            /* least significant r bits */
+
+            mt = new Array(Random.N);
+            /* the array for the state vector */
+            mti = Random.N + 1;
+            /* mti==N+1 means mt[N] is not initialized */
+
+            constructor(seed = null) {
+                if (seed == null) {
+                    seed = new Date().getTime();
+                }
+
+                this.init_genrand(seed);
+            }
+
+            init_genrand(s) {
+                this.mt[0] = s >>> 0;
+                for (this.mti = 1; this.mti < Random.N; this.mti++) {
+                    var s = this.mt[this.mti - 1] ^ (this.mt[this.mti - 1] >>> 30);
+                    this.mt[this.mti] = (((((s & 0xffff0000) >>> 16) * 1812433253) << 16) + (s & 0x0000ffff) * 1812433253)
+                        + this.mti;
+                    /* See Knuth TAOCP Vol2. 3rd Ed. P.106 for multiplier. */
+                    /* In the previous versions, MSBs of the seed affect   */
+                    /* only MSBs of the array mt[].                        */
+                    /* 2002/01/09 modified by Makoto Matsumoto             */
+                    this.mt[this.mti] >>>= 0;
+                    /* for >32 bit machines */
+                }
+            }
+
+            /**
+             * generates a random number on [0,0xffffffff]-interval
+             * @private
+             */
+            _nextInt32() {
+                var y;
+                var mag01 = new Array(0x0, Random.MATRIX_A);
+                /* mag01[x] = x * MATRIX_A  for x=0,1 */
+
+                if (this.mti >= Random.N) { /* generate N words at one time */
+                    var kk;
+
+                    if (this.mti == Random.N + 1)   /* if init_genrand() has not been called, */
+                        this.init_genrand(5489);
+                    /* a default initial seed is used */
+
+                    for (kk = 0; kk < Random.N - Random.M; kk++) {
+                        y = (this.mt[kk] & Random.UPPER_MASK) | (this.mt[kk + 1] & Random.LOWER_MASK);
+                        this.mt[kk] = this.mt[kk + Random.M] ^ (y >>> 1) ^ mag01[y & 0x1];
+                    }
+                    for (; kk < Random.N - 1; kk++) {
+                        y = (this.mt[kk] & Random.UPPER_MASK) | (this.mt[kk + 1] & Random.LOWER_MASK);
+                        this.mt[kk] = this.mt[kk + (Random.M - Random.N)] ^ (y >>> 1) ^ mag01[y & 0x1];
+                    }
+                    y = (this.mt[Random.N - 1] & Random.UPPER_MASK) | (this.mt[0] & Random.LOWER_MASK);
+                    this.mt[Random.N - 1] = this.mt[Random.M - 1] ^ (y >>> 1) ^ mag01[y & 0x1];
+
+                    this.mti = 0;
+                }
+
+                y = this.mt[this.mti++];
+
+                /* Tempering */
+                y ^= (y >>> 11);
+                y ^= (y << 7) & 0x9d2c5680;
+                y ^= (y << 15) & 0xefc60000;
+                y ^= (y >>> 18);
+
+                return y >>> 0;
+            }
+
+            /**
+             * generates an int32 pseudo random number
+             * @param range: an optional [from, to] range, if not specified the result will be in range [0,0xffffffff]
+             * @return {number}
+             */
+            nextInt32(range = null) {
+                var result = this._nextInt32();
+                if (range == null) {
+                    return result;
+                }
+
+                return (result % (range[1] - range[0])) + range[0];
+            }
+
+            /**
+             * generates a random number on [0,0x7fffffff]-interval
+             */
+            nextInt31() {
+                return (this._nextInt32() >>> 1);
+            }
+
+            /**
+             * generates a random number on [0,1]-real-interval
+             */
+            nextNumber() {
+                return this._nextInt32() * (1.0 / 4294967295.0);
+            }
+
+            /**
+             * generates a random number on [0,1) with 53-bit resolution
+             */
+            nextNumber53() {
+                var a = this._nextInt32() >>> 5, b = this._nextInt32() >>> 6;
+                return (a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", function (event) {
+            init();
+        });
+
+        const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+        const lerp = (from, to, t) => from + (to - from) * t;
+        const degrees_to_radians = (degrees) => degrees * (Math.PI / 180.0);
+
+        let curr = 0;
+        let max_it = 6;
+        let ctx;
+        let canvases = [];
+        let anim_canvas;
+
+        let curr_colour = 'black';
+
+        // animation parameters
+        let anim_toggled = 0;
+        let anim_speed = 0.01;
+        let anim_progress = 0;
+
+        let canvas_width = 500;
+        let canvas_height = 500;
+        let stick_width = 1;
+        let stick_height = 10;
+        let half_stick_width = stick_width / 2;
+        let halfstick_height = stick_height / 2;
+        let stick_offset_x = (canvas_width - stick_width) / 2;
+        let stick_offset_y = (canvas_height - stick_height) / 2;
+
+        let canvas_offset_x = canvas_width / 2;
+        let canvas_offset_y = canvas_height - half_stick_width;
+
+        let rotation = 20;
+
+        let rules = ["F[+F]F[-F]F", "F[+F]F", "F[-F]F"];
+
+        let seed = 132;
+        let random = new Random(seed);
+
+        function init() {
+            // +1 for animation canvas
+            for (let i = 0; i <= max_it + 1; i++) {
+                canvases.push(document.createElement('canvas'));
+                let c = canvases[canvases.length - 1];
+                ctx = c.getContext('2d');
+                c.width = canvas_width;
+                c.height = canvas_height;
+                c.hidden = true;
+                canvasContainer.appendChild(c);
+
+                // Draw border
+                ctx.style = 'black';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(canvas_width, 0);
+                ctx.lineTo(canvas_width, canvas_height);
+                ctx.lineTo(0, canvas_height);
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            anim_canvas = canvases[max_it + 1];
+
+            canvases[0].hidden = false;
+
+            anim_canvas.hidden = true;
+            canvases[curr].hidden = false;
+            ctx = canvases[curr].getContext('2d');
+
+            set_rule(0, rules[0]);
+            set_rule(1, rules[1]);
+            set_rule(2, rules[2]);
+            set_seed(seed);
+            set_rotation(rotation);
+
+            window.requestAnimationFrame(loop);
+        }
+
+        function loop() {
+            random = new Random(seed);
+
+            ctx.resetTransform();
+            clear_screen();
+
+            ctx.translate(canvas_offset_x, canvas_offset_y);
+
+            draw_branched_L_system(curr);
+
+            window.requestAnimationFrame(loop);
+        }
+
+        function clear_screen() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas_width, canvas_height);
+        }
+
+        function draw_branched_L_system(step) {
+            if (step === curr && step == 0) {
+                draw_tree_stick();
+                return;
+            }
+
+            step = step - 1;
+            const rule = rules[random.nextInt32() % 3];
+            for (let i = 0; i < rule.length; i++) {
+                switch (rule[i]) {
+                    case "F":
+                        if (step <= 0) {
+                            draw_tree_stick();
+                            ctx.transform(1, 0, 0, 1, 0, -stick_height);
+                        }
+                        else {
+                            draw_branched_L_system(step);
+                        }
+                        break;
+                    case "+":
+                        ctx.rotate(rotation);
+                        break;
+                    case "-":
+                        ctx.rotate(-rotation);
+                        break;
+                    case "[":
+                        ctx.save();
+                        break;
+                    case "]":
+                        ctx.restore();
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function draw_tree_stick() {
+            ctx.fillStyle = curr_colour;
+            ctx.fillRect(-half_stick_width, -stick_height, stick_width, stick_height)
+        }
+
+        function get_oscillation_rotation_offset(stick_idx, iteration) {
+            let offset_multiplier = degrees_to_radians(oscillation_range);
+
+            let idx_offset = stick_idx / 8.0;
+            let iteration_offset = iteration / 5.0;
+            // let oscilattion_progress_multiplier = 1 + (stick_idx / 8.0) * (iteration / 9.0);
+            // let value = oscilattion_progress * oscilattion_progress_multiplier + idx_offset;
+            let value = oscilattion_progress + idx_offset;
+            // triangle wave function in range [-1; 1] with period 4
+            // let range = (oscilattion_progress * oscilattion_progress_multiplier + idx_offset) % 4;
+            // if (range < 2) {
+            //     return offset_multiplier * (range - 1);
+            // }
+            // else {
+            //     return offset_multiplier * -(range - 3);
+            // }
+
+            return offset_multiplier * Math.sin(value);
+        }
+
+        function set_prev() {
+            curr = clamp(curr - 1, 0, max_it);
+
+            if (anim_toggled == 1) {
+                anim_progress = 0;
+            }
+            else {
+                anim_progress = 1;
+            }
+        }
+
+        function set_next() {
+            curr = clamp(curr + 1, 0, max_it);
+
+            if (anim_toggled == 1) {
+                anim_progress = 0;
+            }
+            else {
+                anim_progress = 1;
+            }
+        }
+
+        function generate_seed() {
+            set_seed(random.nextInt32());
+        }
+
+        function toggle_animation() {
+            anim_toggled = 1 - anim_toggled;
+            if (anim_toggled == 1) {
+                anim_progress = 0;
+            }
+            else {
+                anim_progress = 1;
+            }
+        }
+
+        function set_rule(idx, value) {
+            document.getElementById("rule" + idx).value = String(value);
+            rules[idx] = value;
+        }
+
+        function set_seed(value) {
+            document.getElementById("seed").value = String(value);
+            seed = value;
+        }
+
+        function set_rotation(value) {
+            document.getElementById("rotation").value = String(value);
+            rotation = degrees_to_radians(value);
+        }
+
+    </script>
+
+</html>
