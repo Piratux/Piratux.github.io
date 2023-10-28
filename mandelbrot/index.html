@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link
+        rel="stylesheet"
+        href="style.css"
+    />
+</head>
+<div>
+
+    <body>
+        <div id='mandelbrot_container'>
+            <h1>
+                Mandelbrot set
+            </h1>
+            <p>
+                Click anywhere on mandelbrot set to generate julia set.
+            </p>
+            <div id='mandelbrot_canvas_container'></div>
+        </div>
+        <div id='julia_container'>
+            <h1>
+                Julia set
+            </h1>
+            <div id='julia_canvas_container'></div>
+        </div>
+        <div id='newton_container'>
+            <h1>
+                Newton set
+            </h1>
+            <div id='newton_canvas_container'></div>
+        </div>
+
+        <h2>
+            Presets
+            <button
+                onclick="set_fractal_idx(0)"
+                style="width:40px;height:60px;"
+            >
+                <h2>1</h2>
+            </button>
+            <button
+                onclick="set_fractal_idx(1)"
+                style="width:40px;height:60px;"
+            >
+                <h2>2</h2>
+            </button>
+            <button
+                onclick="set_fractal_idx(2)"
+                style="width:40px;height:60px;"
+            >
+                <h2>3</h2>
+            </button>
+        </h2>
+
+    </body>
+    <script type="application/javascript">
+        document.addEventListener("DOMContentLoaded", function (event) {
+            init();
+        });
+
+        const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+        const lerp = (from, to, t) => from + (to - from) * t;
+        const degrees_to_radians = (degrees) => degrees * (Math.PI / 180.0);
+        const map = (value, in_min, in_max, out_min, out_max) => (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+
+        let mandelbrot_canvas = null;
+        let julia_canvas = null;
+        let newton_canvas = null;
+
+        let mandelbrot_canvas_ctx = null;
+        let julia_canvas_ctx = null;
+        let newton_canvas_ctx = null;
+
+        let julia_start_pos = { x: 1, y: 0 };
+        let newton_start_pos = { x: 1, y: 0 };
+
+        let fractal_idx = 0;
+
+        let canvas_width = 600;
+        let canvas_height = 450;
+
+        let newton_min_dist = 0.1;
+        let newton_root_radius = 10;
+
+        let newton_non_converging_point_color = "rgb(0, 0, 0)";
+
+        const REAL_SET = { start: -2, end: 2 };
+        const IMAGINARY_SET = { start: -1.5, end: 1.5 };
+        const MAX_ITERATION = 100;
+
+        const formulas = [
+            (z, c) => formula1(z, c),
+            (z, c) => formula2(z, c),
+            (z, c) => formula3(z, c),
+        ];
+
+        const formula_derivatives = [
+            (z, c) => formula1_derivative(z, c),
+            (z, c) => formula2_derivative(z, c),
+            (z, c) => formula3_derivative(z, c),
+        ];
+
+        const formula_roots = [
+            () => formula1_roots(),
+            () => formula2_roots(),
+            () => formula3_roots(),
+        ];
+
+        function init() {
+            mandelbrot_canvas = document.createElement('canvas');
+            mandelbrot_canvas_ctx = mandelbrot_canvas.getContext('2d');
+            mandelbrot_canvas.width = canvas_width;
+            mandelbrot_canvas.height = canvas_height;
+            mandelbrot_canvas_container.appendChild(mandelbrot_canvas);
+
+            julia_canvas = document.createElement('canvas');
+            julia_canvas_ctx = julia_canvas.getContext('2d');
+            julia_canvas.width = canvas_width;
+            julia_canvas.height = canvas_height;
+            julia_canvas_container.appendChild(julia_canvas);
+
+            newton_canvas = document.createElement('canvas');
+            newton_canvas_ctx = newton_canvas.getContext('2d');
+            newton_canvas.width = canvas_width;
+            newton_canvas.height = canvas_height;
+            newton_canvas_container.appendChild(newton_canvas);
+
+            mandelbrot_canvas.addEventListener("mousedown", mouse_down);
+
+            window.requestAnimationFrame(update);
+        }
+
+        function generate_unique_colors(total, sat, light) {
+            let colors = [];
+            for (let i = 0; i <= total; i++) {
+                colors.push(numberToColorHsl(i, total, sat, light));
+            }
+            return colors;
+        }
+
+        // sat and light are in range [0, 100]
+        function numberToColorHsl(i, total, sat, light) {
+            // Calculate hue value based on the total number of steps
+            const hue = (i / total) * 360;
+
+            // Convert HSL values to a CSS color
+            const hslColor = `hsl(${hue}, ${sat}%, ${light}%)`; // You can adjust saturation and lightness as needed
+
+            return hslColor;
+        }
+
+        function update() {
+            draw_mandelbrot(mandelbrot_canvas_ctx);
+            draw_julia(julia_canvas_ctx);
+            draw_newton(newton_canvas_ctx);
+        }
+
+        function clear_ctx(ctx) {
+            ctx.save();
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas_width, canvas_height);
+            ctx.restore();
+        }
+
+        function draw_mandelbrot(ctx) {
+            for (let x = 0; x < canvas_width; x++) {
+                for (let y = 0; y < canvas_height; y++) {
+                    let complex = map_canvas_pos_to_complex_value({ x: x, y: y });
+
+                    const [m, isMandelbrotSet] = mandelbrot(complex)
+                    let strength = (m / MAX_ITERATION) * 255;
+                    // strength = 255 - strength;
+                    ctx.fillStyle = `rgba(${strength}, ${strength}, ${strength}, 1)`;
+                    ctx.fillRect(x, y, 1, 1)
+                }
+            }
+        }
+
+        function draw_julia(ctx) {
+            for (let x = 0; x < canvas_width; x++) {
+                for (let y = 0; y < canvas_height; y++) {
+                    let complex = map_canvas_pos_to_complex_value({ x: x, y: y });
+
+                    const [m, isMandelbrotSet] = julia(complex, julia_start_pos)
+                    let strength = (m / MAX_ITERATION) * 255;
+                    // strength = 255 - strength;
+                    ctx.fillStyle = `rgba(${strength}, ${strength}, ${strength}, 1)`;
+                    ctx.fillRect(x, y, 1, 1)
+                }
+            }
+        }
+
+        function draw_newton(ctx) {
+            let roots = fractal_formula_roots();
+            let fractal_colors = generate_unique_colors(roots.length, 100, 50);
+            let root_colors = generate_unique_colors(roots.length, 100, 40);
+            console.log('start draw newton');
+            for (let x = 0; x < canvas_width; x++) {
+                for (let y = 0; y < canvas_height; y++) {
+                    let complex = map_canvas_pos_to_complex_value({ x: x, y: y });
+
+                    let converging_root = newton(complex, newton_start_pos);
+
+                    ctx.fillStyle = newton_non_converging_point_color;
+                    for (let i = 0; i < roots.length; i++) {
+                        if (complex_sqdist(converging_root, roots[i]) <= newton_min_dist) {
+                            ctx.fillStyle = fractal_colors[i];
+                            break;
+                        }
+                    }
+
+                    ctx.fillRect(x, y, 1, 1);
+                }
+            }
+
+            for (let i = 0; i < roots.length; i++) {
+                let pos = map_complex_value_to_canvas_pos(roots[i]);
+                draw_circle(ctx, pos.x, pos.y, newton_root_radius, root_colors[i]);
+            }
+            console.log('finish draw newton');
+        }
+
+        function draw_circle(ctx, x, y, radius, style) {
+            ctx.save();
+
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI, false);
+            ctx.fillStyle = style;
+            ctx.fill();
+            ctx.strokeStyle = "rgb(0, 0, 0)";
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function mandelbrot(c) {
+            let z = { x: 0, y: 0 };
+            let n = 0;
+            let d;
+            do {
+                z = fractal_formula(z, c);
+                d = complex_sqdist(z, { x: 0, y: 0 });
+                n += 1
+            } while (d <= 4 && n < MAX_ITERATION)
+            return [n, d <= 4]
+        }
+
+        function julia(_z, c) {
+            let z = { x: _z.x, y: _z.y };
+            let n = 0;
+            let d;
+            do {
+                z = fractal_formula(z, c);
+                d = complex_sqdist(z, { x: 0, y: 0 });
+                n += 1
+            } while (d <= 4 && n < MAX_ITERATION)
+            return [n, d <= 4]
+        }
+
+        function newton(z, c) {
+            let zn = { x: z.x, y: z.y };
+            for (let i = 0; i < MAX_ITERATION; i++) {
+                let div_res = complex_div(fractal_formula(zn, c), fractal_formula_derivative(zn, c));
+                zn = complex_sub(zn, div_res);
+            }
+            return zn;
+        }
+
+        function fractal_formula(z, c) {
+            return formulas[fractal_idx](z, c);
+        }
+
+        function fractal_formula_derivative(z, c) {
+            return formula_derivatives[fractal_idx](z, c);
+        }
+
+        function fractal_formula_roots() {
+            return formula_roots[fractal_idx]();
+        }
+
+        // z^2 + c
+        function formula1(z, c) {
+            let res;
+            res = complex_pow(z, 2);
+            res = complex_add(res, c);
+            return res;
+        }
+
+        // z^3 + c
+        function formula2(z, c) {
+            let res;
+            res = complex_pow(z, 3);
+            res = complex_add(res, c);
+            return res;
+        }
+
+        // z^8 + cz^2 + c
+        function formula3(z, c) {
+            let res, res2;
+            res = complex_pow(z, 8);
+            res2 = complex_pow(z, 2);
+            res2 = complex_mul(c, res2);
+            res2 = complex_add(res2, c);
+            res = complex_add(res, res2);
+            return res;
+        }
+
+        // 2z
+        function formula1_derivative(z, c) {
+            let res;
+            res = complex_mul({ x: 2, y: 0 }, z);
+            return res;
+        }
+
+        // 3z^2
+        function formula2_derivative(z, c) {
+            let res;
+            res = complex_pow(z, 2);
+            res = complex_mul({ x: 3, y: 0 }, res);
+            return res;
+        }
+
+        // 8z^7 + c2z
+        function formula3_derivative(z, c) {
+            let res, res2;
+            res = complex_pow(z, 7);
+            res = complex_mul({ x: 8, y: 0 }, res);
+            res2 = complex_mul(c, z);
+            res2 = complex_mul({ x: 2, y: 0 }, res2);
+            res = complex_add(res, res2);
+            return res;
+        }
+
+        function formula1_roots() {
+            return [
+                { x: 0, y: 1 },
+                { x: 0, y: -1 },
+            ]
+        }
+
+        function formula2_roots() {
+            return [
+                { x: 0.5, y: 0.866 },
+                { x: 0.5, y: -0.866 },
+                { x: -1, y: 0 },
+            ]
+        }
+
+        function formula3_roots() {
+            return [
+                { x: 0.97747, y: 0.47782 },
+                { x: 0.24252, y: 0.88654 },
+                { x: -0.24252, y: 0.88654 },
+                { x: -0.97747, y: 0.47782 },
+                { x: -0.97747, y: -0.47782 },
+                { x: -0.24252, y: -0.88654 },
+                { x: 0.24252, y: -0.88654 },
+                { x: 0.97747, y: -0.47782 },
+            ]
+        }
+
+        function complex_add(c1, c2) {
+            return {
+                x: c1.x + c2.x,
+                y: c1.y + c2.y,
+            };
+        }
+
+        function complex_sub(c1, c2) {
+            return {
+                x: c1.x - c2.x,
+                y: c1.y - c2.y,
+            };
+        }
+
+        function complex_mul(c1, c2) {
+            return {
+                x: c1.x * c2.x - c1.y * c2.y,
+                y: c1.x * c2.y + c1.y * c2.x,
+            }
+        }
+
+        function complex_div(c1, c2) {
+            let den = c2.x ** 2 + c2.y ** 2;
+            return {
+                x: (c1.x * c2.x + c1.y * c2.y) / den,
+                y: (c1.y * c2.x - c1.x * c2.y) / den,
+            }
+        }
+
+        function complex_pow(z, n) {
+            if (n === 0) {
+                // Any non-zero number to the power of 0 is 1
+                return { x: 1, y: 0 };
+            } else if (n === 1) {
+                // Any number to the power of 1 is the number itself
+                return z;
+            } else {
+                let result = { x: z.x, y: z.y }; // Initialize result as z
+
+                for (let i = 2; i <= n; i++) {
+                    result = complex_mul(result, z); // Multiply by z (repeatedly)
+                }
+
+                return result;
+            }
+        }
+
+        function complex_sqdist(c1, c2) {
+            return (c1.x - c2.x) ** 2 + (c1.y - c2.y) ** 2;
+        }
+
+        function map_canvas_pos_to_complex_value(pos) {
+            return {
+                x: map(pos.x, 0, canvas_width, REAL_SET.start, REAL_SET.end),
+                y: map(pos.y, 0, canvas_height, IMAGINARY_SET.start, IMAGINARY_SET.end),
+            }
+        }
+
+        function map_complex_value_to_canvas_pos(pos) {
+            return {
+                x: map(pos.x, REAL_SET.start, REAL_SET.end, 0, canvas_width),
+                y: map(pos.y, IMAGINARY_SET.start, IMAGINARY_SET.end, 0, canvas_height),
+            }
+        }
+
+        function mouse_down(event) {
+            let mouse_pos = get_canvas_mouse_pos(mandelbrot_canvas, event);
+
+            julia_start_pos = map_canvas_pos_to_complex_value(mouse_pos);
+
+            draw_julia(julia_canvas_ctx);
+        }
+
+        function get_canvas_mouse_pos(canvas, event) {
+            let rect = canvas.getBoundingClientRect();
+            return {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            }
+        }
+
+        function set_fractal_idx(idx) {
+            fractal_idx = idx;
+            update();
+        }
+
+    </script>
+
+</html>
