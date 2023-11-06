@@ -359,8 +359,6 @@ function auto_resize_canvas() {
     let canvas_size = 2 * canvas_padding + 2 * circle_radius + circle_spacing * (grid_size - 1);
     document.getElementById("main_canvas").width = canvas_size;
     document.getElementById("main_canvas").height = canvas_size;
-    console.log(document.getElementById("main_canvas").width);
-    console.log(document.getElementById("main_canvas").height);
 
     draw_everything();
 }
@@ -610,7 +608,7 @@ function mouse_down(event) {
 
 function mouse_up(event) {
     let mouse_pos = get_canvas_mouse_pos(event);
-    
+
     if (event.button == 0) {
         add_grid_entry_if_needed(mouse_pos.x, mouse_pos.y);
         left_mouse_button_is_down = false;
