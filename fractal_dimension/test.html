@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    #image-input {
+      display: none;
+    }
+
+    #image-label {
+      width: 300px;
+      height: 300px;
+      border: 2px dashed #ccc;
+      margin: 50px auto;
+      text-align: center;
+      line-height: 300px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #image-preview {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    #download-btn {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      text-decoration: none;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+  <title>Grayscale Image</title>
+</head>
+<body>
+
+<label id="image-label" for="image-input">Select image</label>
+<input type="file" id="image-input" accept="image/*" onchange="handleImageSelect(event)">
+
+<img id="image-preview" src="" alt="Image Preview">
+
+<button id="download-btn" onclick="downloadGrayscaleImage()">Download Grayscale Image</button>
+
+<script>
+  function handleImageSelect(event) {
+    const input = event.target;
+    const files = input.files;
+
+    if (files.length > 0) {
+      const selectedImage = files[0];
+      displayImage(selectedImage);
+      processImage(selectedImage);
+    }
+  }
+
+  function displayImage(file) {
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+      // Set the source of the image element to the data URL
+      document.getElementById('image-preview').src = e.target.result;
+    };
+
+    // Read the image file as a data URL
+    reader.readAsDataURL(file);
+  }
+
+  function processImage(file) {
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+      // Create an HTML image element
+      const img = new Image();
+      img.src = e.target.result;
+
+      // When the image is loaded, convert it to grayscale
+      img.onload = function () {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        // Set the canvas dimensions to the image dimensions
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Draw the image on the canvas
+        context.drawImage(img, 0, 0, img.width, img.height);
+
+        // Get the image data
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Convert the image to grayscale
+        for (let i = 0; i < data.length; i += 4) {
+          const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          data[i] = avg;
+          data[i + 1] = avg;
+          data[i + 2] = avg;
+        }
+
+        // Display the processed image
+        context.putImageData(imageData, 0, 0);
+
+        // Show the download button
+        document.getElementById('download-btn').style.display = 'block';
+
+        // Set up a data URL for the processed image
+        const processedDataURL = canvas.toDataURL('image/png');
+        document.getElementById('download-btn').setAttribute('href', processedDataURL);
+      };
+    };
+
+    // Read the image file as a data URL
+    reader.readAsDataURL(file);
+  }
+
+  function downloadGrayscaleImage() {
+    const downloadBtn = document.getElementById('download-btn');
+    const downloadLink = downloadBtn.getAttribute('href');
+
+    // Trigger the download
+    const a = document.createElement('a');
+    a.href = downloadLink;
+    a.download = 'grayscale_image.png';
+    a.click();
+  }
+</script>
+
+</body>
+</html>

@@ -250,6 +250,11 @@
 
         imageInput.addEventListener('change', function () {
             const file = imageInput.files[0];
+            // File not selected
+            if (!file) {
+                return;
+            }
+            
             const reader = new FileReader();
 
             reader.onload = function (e) {

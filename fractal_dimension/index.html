@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link
+        rel="stylesheet"
+        href="style.css"
+    />
+    <meta charset="UTF-8">
+    <title>Fractal dimension calculator</title>
+</head>
+
+<body>
+    <h1>Fractal dimension calculator</h1>
+
+    Upload picture:
+    <br>
+    <input
+        type="file"
+        id="imageInput"
+        accept="image/*"
+        autocomplete="off"
+    >
+    <br><br>
+
+    <button onclick="calculateFractalDimension()">Calculate fractal dimension</button>
+    <br>
+
+    <p id="fractalDimensionLabel"></p>
+    <br>
+
+    <p>Uploaded Image</p>
+    <img
+        id="imagePreview"
+        style="display:none;"
+    >
+    <br>
+
+    <h2>
+        Implementation details
+    </h2>
+    <p>
+        - Firstly, input image is downscaled, such that width and height is a power of 2.
+        <br>
+        - Then image is grayscaled.
+        <br>
+        - Then an array is obtained from image average Red channel colours of blocksize 4.
+        <br>
+        - Then with block sizes [32, 16, 8, 4, 2], block counts are calculated, by counting how many squares intersect with the plotted points from array.
+        <br>
+        - Finally, fractal dimension is calculated.
+    </p>
+
+    <script>
+        let fractalDimensionLabel = document.getElementById('fractalDimensionLabel');
+        let imageInput = document.getElementById('imageInput');
+        let imagePreview = document.getElementById('imagePreview');
+        let downscaledImage = document.getElementById('downscaledImage');
+        let grayscaledImage = document.getElementById('grayscaledImage');
+        const imageBlockSize = 4;
+        const blockSizes = [32, 16, 8, 4, 2];
+        const blockSizeLogs = [3, 4, 5, 6, 7]; // log_2(256 / blockSizes[i])
+        const minImageSize = imageBlockSize * blockSizes[0];
+
+        imageInput.addEventListener('change', function () {
+            const file = imageInput.files[0];
+            // File not selected
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        function calculateFractalDimension() {
+            const image = new Image();
+            image.src = imagePreview.src;
+
+            image.onload = function (e) {
+                const imageData = getImageData(image);
+
+                if (imageData.width < minImageSize || imageData.height < minImageSize) {
+                    alert(`Error: Image must be at least of size ${minImageSize}x${minImageSize}`);
+                    return;
+                }
+
+                console.log("downscaleImage");
+                const downscaledImageData = downscaleImage(image, imageData);
+
+                console.log("Downscaled image width: " + downscaledImageData.width);
+                console.log("Downscaled image height: " + downscaledImageData.height);
+
+                console.log("grayscaleImage");
+                const grayscaledImageData = grayscaleImage(downscaledImageData);
+
+                console.log("getImageAverageBlockValues");
+                const processedArray = getImageAverageBlockValues(grayscaledImageData, imageBlockSize);
+
+                let blockCounts = [];
+                for (const blockSize of blockSizes) {
+                    console.log("calculateIntersectingBlockCount: " + blockSize);
+                    const blockCount = calculateIntersectingBlockCount(processedArray, blockSize);
+                    blockCounts.push(blockCount);
+                }
+
+                console.log("blockCounts: " + blockCounts);
+                fractalDimensionLabel.innerText = "Fractal dimension: " + calculateDimension(blockCounts);
+            };
+        }
+
+        function calculateDimension(blockCounts) {
+            // formula is:
+            // (   d    ) = (A^T * A)^(-1) * A^T * Y
+            // ( log(c) )
+            // where matrix A:
+            // ( |log(d1)| 1 )
+            // ( |log(d2)| 2 )
+            // ...
+            // ( |log(dn)| n )
+            //
+            // and matrix Y:
+            // ( log(N(d1)) )
+            // ( log(N(d2)) )
+            // ...
+            // ( log(N(dn)) )
+            //
+            // here:
+            // - di: 256 / blockSizes[i]
+            // - |log(di)|: blockSizeLogs[i]
+            // and N(di):
+            // - blockCounts[i]
+
+            // x = blockSizeLogs
+            // y = blockCountLogs
+
+
+            const n = blockSizes.length;
+
+            let blockCountLogs = [];
+            for (let i = 0; i < n; i++) {
+                blockCountLogs.push(Math.log2(blockCounts[i]));
+            }
+
+            console.log("Log(di):    " + blockSizeLogs);
+            console.log("Log(N(di)): " + blockCountLogs);
+
+            // calculate A^T * A
+            let mat1 = [0, 0, 0, 0];
+            for (let i = 0; i < n; i++) {
+                mat1[0] += blockSizeLogs[i] * blockSizeLogs[i];
+                mat1[1] += blockSizeLogs[i];
+                mat1[2] += blockSizeLogs[i];
+                mat1[3] += 1;
+            }
+
+            // calculate (A^T * A)^(-1)
+            let determinant = 1 / (mat1[0] * mat1[3] - mat1[1] * mat1[2]);
+            let mat2 = [mat1[3], -mat1[1], -mat1[2], mat1[0]];
+            for (let i = 0; i < 4; i++) {
+                mat2[i] *= determinant;
+            }
+
+            // calculate upper row of (A^T * A)^(-1) * A^T
+            let mat3_upper_row = [];
+            for (let i = 0; i < n; i++) {
+                mat3_upper_row.push(mat2[0] * blockSizeLogs[i] + mat2[1]);
+            }
+
+            // calculate d: (A^T * A)^(-1) * A^T * Y
+            let d = 0;
+            for (let i = 0; i < n; i++) {
+                d += mat3_upper_row[i] * blockCountLogs[i];
+            }
+
+            return d;
+        }
+
+        function getImageAverageBlockValues(imageData, blockSize) {
+            // This function assumes that image is grayscale
+            const originalWidth = imageData.width;
+            const originalHeight = imageData.height;
+
+            const processedArray = [];
+
+            for (let y = 0; y < originalHeight; y += blockSize) {
+                const reverseOrder = y % 2 === 1; // Reverse order for every 2nd row
+
+                for (let x = 0; x < originalWidth; x += blockSize) {
+                    const currentX = reverseOrder ? originalWidth - blockSize - x : x;
+
+                    let sumR = 0;
+                    let count = 0;
+
+                    for (let blockY = 0; blockY < blockSize; blockY++) {
+                        for (let blockX = 0; blockX < blockSize; blockX++) {
+                            const pixelX = currentX + blockX;
+                            const pixelY = y + blockY;
+
+                            if (pixelX < originalWidth && pixelY < originalHeight) {
+                                const index = (pixelY * originalWidth + pixelX) * 4;
+                                sumR += imageData.data[index];
+                                count++;
+                            }
+                        }
+                    }
+
+                    const avgR = Math.round(sumR / count);
+                    processedArray.push(avgR);
+                }
+            }
+
+            return processedArray;
+        }
+
+        function calculateIntersectingBlockCount(processedArray, blockSize) {
+            // Plots processedArray values on a graph.
+            // Then counts how many blocks in a grid intersect with the graph.
+
+            // It's assumed processedArray length is divisible by blockSize
+
+            let totalCount = 0;
+
+            // We need to add one more value to processedArray so that line amount is divisble by blockSize
+            processedArray.push(processedArray[processedArray.length - 1]);
+
+            // .. but need to subtract 1 now
+            for (let x = 0; x < processedArray.length - 1; x += blockSize) {
+                let lines = getLines(processedArray, blockSize, x);
+                for (let y = 0; y < 256; y += blockSize) {
+                    let square = {
+                        pos: {
+                            x: x,
+                            y: y
+                        },
+                        size: {
+                            x: blockSize,
+                            y: blockSize
+                        }
+                    };
+
+                    let intersects = lines.some((line) => RectOverlapsLine(square, line));
+
+                    if (intersects) {
+                        totalCount++;
+                    }
+                }
+            }
+
+            return totalCount;
+        }
+
+        // Checks if rectangle contains point
+        function rectContainsPoint(r, p) {
+            return !(p.x < r.pos.x || p.y < r.pos.y ||
+                p.x > (r.pos.x + r.size.x) || p.y > (r.pos.y + r.size.y));
+        }
+
+        // Check if line segment overlaps line segment
+        function LineOverlapsLine(l1, l2) {
+            let uA = ((l2.end.x - l2.start.x) * (l1.start.y - l2.start.y) - (l2.end.y - l2.start.y) * (l1.start.x - l2.start.x)) / ((l2.end.y - l2.start.y) * (l1.end.x - l1.start.x) - (l2.end.x - l2.start.x) * (l1.end.y - l1.start.y));
+            let uB = ((l1.end.x - l1.start.x) * (l1.start.y - l2.start.y) - (l1.end.y - l1.start.y) * (l1.start.x - l2.start.x)) / ((l2.end.y - l2.start.y) * (l1.end.x - l1.start.x) - (l2.end.x - l2.start.x) * (l1.end.y - l1.start.y));
+            return uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1;
+        }
+
+        function RectOverlapsLine(rect, line) {
+            let rect_top = {
+                start: {
+                    x: rect.pos.x,
+                    y: rect.pos.y
+                },
+                end: {
+                    x: rect.pos.x + rect.size.x,
+                    y: rect.pos.y
+                }
+            }
+            let rect_bottom = {
+                start: {
+                    x: rect.pos.x,
+                    y: rect.pos.y + rect.size.y
+                },
+                end: {
+                    x: rect.pos.x + rect.size.x,
+                    y: rect.pos.y + rect.size.y
+                }
+            }
+            let rect_left = {
+                start: {
+                    x: rect.pos.x,
+                    y: rect.pos.y
+                },
+                end: {
+                    x: rect.pos.x,
+                    y: rect.pos.y + rect.size.y
+                }
+            }
+            let rect_right = {
+                start: {
+                    x: rect.pos.x + rect.size.x,
+                    y: rect.pos.y
+                },
+                end: {
+                    x: rect.pos.x + rect.size.x,
+                    y: rect.pos.y + rect.size.y
+                }
+            }
+            return rectContainsPoint(rect, line.start)
+                || LineOverlapsLine(rect_top, line)
+                || LineOverlapsLine(rect_bottom, line)
+                || LineOverlapsLine(rect_left, line)
+                || LineOverlapsLine(rect_right, line);
+        }
+
+        function getLines(processedArray, blockSize, offset) {
+            let lines = [];
+            for (let x = 0; x < blockSize; x++) {
+                lines.push({
+                    start: {
+                        x: offset,
+                        y: processedArray[x + offset]
+                    },
+                    end: {
+                        x: offset + 1,
+                        y: processedArray[x + offset + 1]
+                    }
+                })
+            }
+            return lines;
+        }
+
+        function getImageData(image) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            ctx.drawImage(image, 0, 0);
+            return ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        function imageDataToDataURL(imageData) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = imageData.width;
+            canvas.height = imageData.height;
+            ctx.putImageData(imageData, 0, 0);
+            return canvas.toDataURL();
+        }
+
+        function nearestPowerOfTwo(value) {
+            return Math.pow(2, Math.floor(Math.log2(value)));
+        }
+
+        function downscaleImage(image, imageData) {
+            const scaleFactorX = nearestPowerOfTwo(imageData.width) / imageData.width;
+            const scaleFactorY = nearestPowerOfTwo(imageData.height) / imageData.height;
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = nearestPowerOfTwo(imageData.width);
+            canvas.height = nearestPowerOfTwo(imageData.height);
+
+            ctx.drawImage(
+                image,           // source image data
+                0,                  // source x
+                0,                  // source y
+                imageData.width,    // source width
+                imageData.height,   // source height
+                0,                  // destination x
+                0,                  // destination y
+                canvas.width,       // destination width
+                canvas.height       // destination height
+            );
+
+            return ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        function grayscaleImage(imageData) {
+            const data = imageData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                data[i] = avg;
+                data[i + 1] = avg;
+                data[i + 2] = avg;
+            }
+
+            return imageData;
+        }
+
+    </script>
+
+</body>
+
+</html>
