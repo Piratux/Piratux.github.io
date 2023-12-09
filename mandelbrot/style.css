@@ -21,11 +21,6 @@ div.canvas_info:after {
     clear: both;
 }
 
-img {
-    width: auto;
-    height: 250px;
-}
-
 @media (prefers-color-scheme: dark) {
     body {
         color: #c9d1d9;
