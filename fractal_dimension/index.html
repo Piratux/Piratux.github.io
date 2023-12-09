@@ -46,9 +46,13 @@
         <br>
         - Then an array is obtained from image average Red channel colours of blocksize 4.
         <br>
-        - Then with block sizes [32, 16, 8, 4, 2], block counts are calculated, by counting how many squares intersect with the plotted points from array.
+        - Then with block sizes [32, 16, 8, 4, 2], block counts are calculated, by counting how many squares intersect
+        with the plotted points from array.
         <br>
         - Finally, fractal dimension is calculated.
+
+        <br />
+        It was noted, that resulting fractal dimension is not accurate.
     </p>
 
     <script>
@@ -121,9 +125,9 @@
             // ( log(c) )
             // where matrix A:
             // ( |log(d1)| 1 )
-            // ( |log(d2)| 2 )
+            // ( |log(d2)| 1 )
             // ...
-            // ( |log(dn)| n )
+            // ( |log(dn)| 1 )
             //
             // and matrix Y:
             // ( log(N(d1)) )
@@ -160,6 +164,8 @@
                 mat1[3] += 1;
             }
 
+            console.log("mat1: " + mat1);
+
             // calculate (A^T * A)^(-1)
             let determinant = 1 / (mat1[0] * mat1[3] - mat1[1] * mat1[2]);
             let mat2 = [mat1[3], -mat1[1], -mat1[2], mat1[0]];
@@ -167,11 +173,16 @@
                 mat2[i] *= determinant;
             }
 
+            console.log("determinant: " + determinant);
+            console.log("mat2: " + mat2);
+
             // calculate upper row of (A^T * A)^(-1) * A^T
             let mat3_upper_row = [];
             for (let i = 0; i < n; i++) {
                 mat3_upper_row.push(mat2[0] * blockSizeLogs[i] + mat2[1]);
             }
+
+            console.log("mat3: " + mat3_upper_row);
 
             // calculate d: (A^T * A)^(-1) * A^T * Y
             let d = 0;
@@ -384,7 +395,7 @@
             const data = imageData.data;
 
             for (let i = 0; i < data.length; i += 4) {
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3.0;
                 data[i] = avg;
                 data[i + 1] = avg;
                 data[i + 2] = avg;
