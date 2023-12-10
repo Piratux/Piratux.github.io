@@ -8,6 +8,8 @@
     />
     <meta charset="UTF-8">
     <title>Fractal dimension calculator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 
 <body>
@@ -36,15 +38,19 @@
     >
     <br>
 
+    <canvas
+        id="myChart"
+        width="400"
+        height="400"
+    ></canvas>
+
     <h2>
         Implementation details
     </h2>
     <p>
         - Firstly, input image is downscaled, such that width and height is a power of 2.
         <br>
-        - Then image is grayscaled.
-        <br>
-        - Then an array is obtained from image average Red channel colours of blocksize 4.
+        - Then an array is obtained from image average Red+Green+Blue channel colours of blocksize 4.
         <br>
         - Then with block sizes [32, 16, 8, 4, 2], block counts are calculated, by counting how many squares intersect
         with the plotted points from array.
@@ -65,6 +71,7 @@
         const blockSizes = [32, 16, 8, 4, 2];
         const blockSizeLogs = [3, 4, 5, 6, 7]; // log_2(256 / blockSizes[i])
         const minImageSize = imageBlockSize * blockSizes[0];
+        let myChart = null;
 
         imageInput.addEventListener('change', function () {
             const file = imageInput.files[0];
@@ -82,6 +89,52 @@
 
             reader.readAsDataURL(file);
         });
+
+        function plotTwoArrays(array1, array2) {
+            // Destroy the existing chart if it exists
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            // Make sure both arrays have the same length
+            if (array1.length !== array2.length) {
+                console.error("Arrays must have the same length.");
+                return;
+            }
+
+            // Convert the arrays to an array of objects with x and y properties
+            var points = array1.map(function (value, index) {
+                return { x: value, y: array2[index] };
+            });
+
+            // Get the canvas element
+            var ctx = document.getElementById('myChart').getContext('2d');
+
+            // Create a scatter plot
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'plot of {x: |log₂(δ)|, y: log₂(N(δ))}',
+                        data: points,
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            suggestedMin: 0, // Start from y = 0
+                        }
+                    }
+                }
+            });
+        }
+
 
         function calculateFractalDimension() {
             const image = new Image();
@@ -101,11 +154,8 @@
                 console.log("Downscaled image width: " + downscaledImageData.width);
                 console.log("Downscaled image height: " + downscaledImageData.height);
 
-                console.log("grayscaleImage");
-                const grayscaledImageData = grayscaleImage(downscaledImageData);
-
                 console.log("getImageAverageBlockValues");
-                const processedArray = getImageAverageBlockValues(grayscaledImageData, imageBlockSize);
+                const processedArray = getImageAverageBlockValues(downscaledImageData, imageBlockSize);
 
                 let blockCounts = [];
                 for (const blockSize of blockSizes) {
@@ -151,6 +201,8 @@
             for (let i = 0; i < n; i++) {
                 blockCountLogs.push(Math.log2(blockCounts[i]));
             }
+
+            plotTwoArrays(blockSizeLogs, blockCountLogs);
 
             console.log("Log(di):    " + blockSizeLogs);
             console.log("Log(N(di)): " + blockCountLogs);
@@ -206,8 +258,8 @@
                 for (let x = 0; x < originalWidth; x += blockSize) {
                     const currentX = reverseOrder ? originalWidth - blockSize - x : x;
 
-                    let sumR = 0;
-                    let count = 0;
+                    let sum = 0.0;
+                    let count = 0.0;
 
                     for (let blockY = 0; blockY < blockSize; blockY++) {
                         for (let blockX = 0; blockX < blockSize; blockX++) {
@@ -216,14 +268,18 @@
 
                             if (pixelX < originalWidth && pixelY < originalHeight) {
                                 const index = (pixelY * originalWidth + pixelX) * 4;
-                                sumR += imageData.data[index];
+                                sum += imageData.data[index];
+                                count++;
+                                sum += imageData.data[index + 1];
+                                count++;
+                                sum += imageData.data[index + 2];
                                 count++;
                             }
                         }
                     }
 
-                    const avgR = Math.round(sumR / count);
-                    processedArray.push(avgR);
+                    const avg = sum / count;
+                    processedArray.push(avg);
                 }
             }
 
@@ -389,19 +445,6 @@
             );
 
             return ctx.getImageData(0, 0, canvas.width, canvas.height);
-        }
-
-        function grayscaleImage(imageData) {
-            const data = imageData.data;
-
-            for (let i = 0; i < data.length; i += 4) {
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3.0;
-                data[i] = avg;
-                data[i + 1] = avg;
-                data[i + 2] = avg;
-            }
-
-            return imageData;
         }
 
     </script>
