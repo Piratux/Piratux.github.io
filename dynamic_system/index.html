@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <title>Function Evaluator with Plot</title>
+
+    <script
+        type="text/javascript"
+        src="./chart.min.js"
+    ></script>
+    <link
+        rel="stylesheet"
+        href="style.css"
+    />
+
+</head>
+
+<body>
+
+    <h2>Function Evaluator with Plot</h2>
+
+    <!-- Function input is read-only with a default value -->
+    <label for="functionInput">Function: ax(1-x)</label>
+    <br>
+
+    <!-- Other inputs remain as they are -->
+    <label for="aValueInput">a:</label>
+    <br>
+    <input
+        type="number"
+        id="aValueInput"
+        placeholder="Enter the value for a"
+    >
+    <span
+        id="aError"
+        class="error"
+    ></span>
+    <br>
+
+    <label for="xValueInput">x0:</label>
+    <br>
+    <input
+        type="number"
+        id="xValueInput"
+        placeholder="Enter the value for x0"
+    >
+    <span
+        id="xError"
+        class="error"
+    ></span>
+    <br>
+
+    <label for="arraySizeInput">Orbital and graphical iterations:</label>
+    <br>
+    <input
+        type="number"
+        id="arraySizeInput"
+        placeholder="Enter iteration count"
+    >
+    <br>
+
+    <span
+        id="arraySizeError"
+        class="error"
+    ></span>
+    <br>
+
+    <button onclick="validateAndEvaluate()">Evaluate</button>
+    <br>
+
+    <canvas
+        id="orbitTimeSeriesCanvas"
+        width="600"
+        height="300"
+    ></canvas>
+
+    <br>
+
+    <canvas
+        id="graphicalIterationCanvas"
+        width="600"
+        height="300"
+    ></canvas>
+
+    <br>
+
+    <canvas
+        id="faigenbaumTreeCanvas"
+        width="600"
+        height="300"
+    ></canvas>
+
+    <script>
+        const maxValue = 100;
+        const functionInput = 'a*x*(1-x)';
+        const dynamicFunction = new Function('x', 'a', `return ${functionInput};`);
+        let orbitTimeSeriesChart = null;
+        let graphicalIterationChart = null;
+        let faigenbaumTreeChart = null;
+
+        function init() {
+            setDefaultValues();
+            validateAndEvaluate();
+        }
+
+        function setDefaultValues() {
+            // Set default values for other inputs
+            document.getElementById('aValueInput').value = 4;
+            document.getElementById('xValueInput').value = 0.2;
+            document.getElementById('arraySizeInput').value = 50;
+        }
+
+        function isNumber(value) {
+            return !isNaN(parseFloat(value)) && isFinite(value);
+        }
+
+        function validateAndEvaluate() {
+            const aValueInput = document.getElementById('aValueInput').value;
+            const xValueInput = document.getElementById('xValueInput').value;
+            const arraySizeInput = document.getElementById('arraySizeInput').value;
+
+            const aError = document.getElementById('aError');
+            const xError = document.getElementById('xError');
+            const arraySizeError = document.getElementById('arraySizeError');
+
+            // Clear previous errors
+            aError.textContent = '';
+            xError.textContent = '';
+            arraySizeError.textContent = '';
+
+            // Validate a
+            if (!isNumber(aValueInput)) {
+                aError.textContent = 'Enter a valid number';
+                return;
+            }
+
+            // Validate x
+            if (!isNumber(xValueInput)) {
+                xError.textContent = 'Enter a valid number';
+                return;
+            }
+
+            // Validate arraySize
+            if (!isNumber(arraySizeInput) || parseInt(arraySizeInput) <= 0) {
+                arraySizeError.textContent = 'Enter a valid positive number';
+                return;
+            }
+
+            // If all values are valid, proceed to evaluate the function
+            evaluateFunction();
+        }
+
+        function evaluateFunction() {
+            // Hardcoded function and default values
+            const aValueInput = parseFloat(document.getElementById('aValueInput').value);
+            const xValueInput = parseFloat(document.getElementById('xValueInput').value);
+            const arraySize = parseInt(document.getElementById('arraySizeInput').value);
+
+            const arrayA = [];
+            for (let index = 0; index < arraySize; index++) {
+                const yValue = index === 0 ? xValueInput : dynamicFunction(arrayA[index - 1].y, aValueInput);
+
+                if (Math.abs(yValue) > maxValue) {
+                    console.log(`One of the values is not within allowed range of: [${-maxValue}, ${maxValue}]. Aborting.`);
+                    console.log(`y value: ${yValue}`);
+                    break;
+                }
+
+                arrayA.push({ x: index, y: yValue });
+            }
+
+            // Plot the array using Chart.js
+            plotArray(arrayA);
+
+            const arrayB = [];
+            for (let index = 0; index < arraySize; index++) {
+                let xValue = 0;
+                let yValue = 0;
+                if (index === 0) {
+                    xValue = xValueInput;
+                    yValue = 0;
+                }
+                else if (index % 2 === 0) {
+                    xValue = arrayB[index - 1].y;
+                    yValue = arrayB[index - 1].y;
+                }
+                else if (index % 2 === 1) {
+                    xValue = arrayB[index - 1].x;
+                    yValue = dynamicFunction(arrayB[index - 1].x, aValueInput);
+                }
+
+                if (Math.abs(xValue) > maxValue || Math.abs(yValue) > maxValue) {
+                    console.log(`One of the values is not within allowed range of: [${-maxValue}, ${maxValue}]. Aborting.`);
+                    console.log(`x value: ${xValue}`);
+                    console.log(`y value: ${yValue}`);
+                    break;
+                }
+
+                arrayB.push({ x: xValue, y: yValue });
+            }
+
+            // Plot the array using Chart.js
+            drawLinesAndFunction(arrayB);
+
+            plotFaigenbaumTree(getFaigenbaumTreePoints());
+        }
+
+        function getFaigenbaumTreePoints() {
+            const skippedIterations = -50;
+            const orbitIterations = 20;
+            const aPrecisionIterations = 100;
+            const aRange = 3.0;
+            const aOffset = 1.0;
+            const xValueInput = document.getElementById('xValueInput').value;;
+            let points = [];
+            for (let a = 0; a <= aPrecisionIterations; a++) {
+                let yValue = 0;
+                let aValue = aOffset + aRange * (a / aPrecisionIterations);
+                for (let index = skippedIterations; index <= orbitIterations; index++) {
+                    let lastYValue = yValue;
+                    yValue = index === skippedIterations ? xValueInput : dynamicFunction(lastYValue, aValue);
+                    if (index >= 0) {
+                        points.push({ x: aValue, y: yValue });
+                    }
+                }
+            }
+            return points;
+        }
+
+        function plotArray(points) {
+            if (orbitTimeSeriesChart) {
+                orbitTimeSeriesChart.destroy();
+            }
+
+            const ctx = document.getElementById('orbitTimeSeriesCanvas').getContext('2d');
+            orbitTimeSeriesChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Orbital plot',
+                        data: points,
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            suggestedMin: 0, // Start from y = 0
+                        }
+                    }
+                }
+            });
+        }
+
+        function drawLinesAndFunction(points) {
+            if (graphicalIterationChart) {
+                graphicalIterationChart.destroy();
+            }
+
+            const ctx = document.getElementById('graphicalIterationCanvas').getContext('2d');
+
+            const data = {
+                datasets: [{
+                    label: 'Graphical iteration',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    data: points,
+                    fill: false,
+                }]
+            };
+
+            const options = {
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                    },
+                    y: {
+                        type: 'linear',
+                        position: 'left',
+                    }
+                }
+            };
+
+            // Create a new chart
+            graphicalIterationChart = new Chart(ctx, {
+                type: 'line',
+                data: data,
+                options: options,
+            });
+        }
+
+        function plotFaigenbaumTree(points) {
+            if (faigenbaumTreeChart) {
+                faigenbaumTreeChart.destroy();
+            }
+
+            const ctx = document.getElementById('faigenbaumTreeCanvas').getContext('2d');
+            faigenbaumTreeChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Faigenbaum tree',
+                        data: points,
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                        }
+                    }
+                }
+            });
+        }
+
+        window.onload = init;
+    </script>
+
+</body>
+
+</html>
