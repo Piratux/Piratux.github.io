@@ -1,265 +1,289 @@
 <html>
- <head>
- </head>
- <div style="text-align: center">
-<body style="background-color:grey;">
- <div id='canvasContainer'></div>
-   <br>
-   <h2>
-	<button onclick="set_prev()" style="width:80px;height:60px;"><h2>Prev</h2></button>
-	<button onclick="set_next()" style="width:80px;height:60px;"><h2>Next</h2></button>
-	<input type="checkbox" onclick="toggle_animation()" style="width:20px;height:20px;" id="scales" name="scales" autocomplete="off">Animate transformations
- </body>
-  <script type="application/javascript">
 
-document.addEventListener("DOMContentLoaded", function(event) {
-	init();
-});
+<head>
+    <link
+        rel="stylesheet"
+        href="style.css"
+    />
+</head>
+<div style="text-align: center">
 
-const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
-const lerp = (from, to, t) => from + (to - from) * t;
+    <body>
+        <div id='canvasContainer'></div>
+        <br>
+        <h2>
+            <button
+                onclick="set_prev()"
+                style="width:80px;height:60px;"
+            >
+                <h2>Prev</h2>
+            </button>
+            <button
+                onclick="set_next()"
+                style="width:80px;height:60px;"
+            >
+                <h2>Next</h2>
+            </button>
+            <input
+                type="checkbox"
+                onclick="toggle_animation()"
+                style="width:20px;height:20px;"
+                id="scales"
+                name="scales"
+                autocomplete="off"
+            >Animate transformations
+    </body>
+    <script type="application/javascript">
 
-var curr = 0;
-var max_it = 6;
-var ctx;
-var canvases = [];
-var anim_canvas;
+        document.addEventListener("DOMContentLoaded", function (event) {
+            init();
+        });
 
-var curr_colour = 'black';
-var start_step = 0;
+        const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+        const lerp = (from, to, t) => from + (to - from) * t;
 
-// animation parameters
-var anim_toggled = 0;
-var anim_speed = 0.005;
-var anim_progress = 0;
+        var curr = 0;
+        var max_it = 6;
+        var ctx;
+        var canvases = [];
+        var anim_canvas;
 
-const transforms = [
-	[0.5, 0, 0, -0.5, 0, 0, Math.PI/2],
-	[0.5, 0, 0, -0.5, 250, 250, 0],
-	[0.25, 0, 0, 0.25, 62.5, 312.5, 0],
-	[0.5, 0, 0, 0.5, 250, 500, -Math.PI/2]
-];
+        var curr_colour = 'black';
+        var start_step = 0;
 
-const transform_colours = [
-	'purple',
-	'green',
-	'red',
-	'orange'
-];
+        // animation parameters
+        var anim_toggled = 0;
+        var anim_speed = 0.005;
+        var anim_progress = 0;
 
-function init() {
-	// pre-generate static fractal images
+        const transforms = [
+            [0.5, 0, 0, -0.5, 0, 0, Math.PI / 2],
+            [0.5, 0, 0, -0.5, 250, 250, 0],
+            [0.25, 0, 0, 0.25, 62.5, 312.5, 0],
+            [0.5, 0, 0, 0.5, 250, 500, -Math.PI / 2]
+        ];
 
-	// +1 for animation canvas
-	for (var i = 0; i <= max_it + 1; i++){
-		canvases.push(document.createElement('canvas'));
-		var c = canvases[canvases.length - 1];
-		ctx = c.getContext('2d');
-		c.width = 500;
-		c.height = 500;
-		c.hidden = true;
-		canvasContainer.appendChild(c);
-		
-		// Draw border
-		ctx.style = 'black';
-		ctx.beginPath();
-		ctx.moveTo(0,0);
-		ctx.lineTo(500,0);
-		ctx.lineTo(500,500);
-		ctx.lineTo(0,500);
-		ctx.closePath();
-		ctx.stroke();
-		
-		// draw background
-		ctx.fillStyle = 'white';
-		ctx.fillRect(0, 0, 500, 500);
-		
-		if(i != max_it + 1){
-			curr_colour = 'black';
-			start_step = i-1 ;
-			draw_fractal(i);
-		}
-	}
-	
-	anim_canvas = canvases[max_it+1];
-	
-	canvases[0].hidden = false;
-	
-	window.requestAnimationFrame(loop);
-}
+        const transform_colours = [
+            'purple',
+            'green',
+            'red',
+            'orange'
+        ];
 
-function loop(){
-	if (anim_toggled == 1){
-		// draw background
-		ctx.fillStyle = 'white';
-		ctx.fillRect(0, 0, 500, 500);
-		
-		start_step = curr-1;
-		draw_animated_fractal(curr);
-		anim_progress = clamp(anim_progress + anim_speed, 0, 1);
-	}
-	
-	window.requestAnimationFrame(loop);
-}
+        function init() {
+            // pre-generate static fractal images
 
-// Recursive draw
-// NOTE: I wanted to merge this function with "draw_fractal()" function, but colours don't work properly and I can't find out why
-function draw_fractal(step) {
-	if (step > 0) {
-		step = step-1; 
-		ctx.save();
-		ctx.save();
-		ctx.save();
+            // +1 for animation canvas
+            for (var i = 0; i <= max_it + 1; i++) {
+                canvases.push(document.createElement('canvas'));
+                var c = canvases[canvases.length - 1];
+                ctx = c.getContext('2d');
+                c.width = 500;
+                c.height = 500;
+                c.hidden = true;
+                canvasContainer.appendChild(c);
 
-		// top left
-		if (start_step == step){
-			curr_colour = 'purple';
-		}
-		ctx.transform(0, 0.5, 0.5, 0, 0, 0);
-		draw_fractal(step); 
-		ctx.restore();
+                // Draw border
+                ctx.style = 'black';
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(500, 0);
+                ctx.lineTo(500, 500);
+                ctx.lineTo(0, 500);
+                ctx.closePath();
+                ctx.stroke();
 
-		// top right
-		if (start_step == step){
-			curr_colour = 'green';
-		}
-		ctx.transform(0.5, 0, 0, -0.5, 250, 250);
-		draw_fractal(step); 
-		ctx.restore();
-		
-		// bottom left
-		if (start_step == step){
-			curr_colour = 'red';
-		}
-		ctx.transform(0.25, 0, 0, 0.25, 62.5, 312.5);
-		draw_fractal(step);
-		ctx.restore();
-		
-		// bottom right
-		if (start_step == step){
-			curr_colour = 'orange';
-		}
-		ctx.transform(0, -0.5, 0.5, 0, 250, 500);
-		draw_fractal(step);
-	}
-	else {
-		draw_letterF();
-	}
-}
+                // draw background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, 500, 500);
 
-// Recursive draw 
-function draw_animated_fractal(step) {
-	if (step > 0) {
-		step = step-1;
-		for(var i = 0; i < transforms.length; i++){
-			ctx.save();
-			
-			if (start_step == step){
-				curr_colour = transform_colours[i];
-				
-				ctx.transform(
-					1, 
-					0,
-					0,
-					1,
-					lerp(0, transforms[i][4], anim_progress),
-					lerp(0, transforms[i][5], anim_progress)
-				);
-				ctx.rotate(lerp(0, transforms[i][6], anim_progress));
-				ctx.transform(
-					lerp(1, transforms[i][0], anim_progress),
-					lerp(0, transforms[i][1], anim_progress),
-					lerp(0, transforms[i][2], anim_progress),
-					lerp(1, transforms[i][3], anim_progress),
-					0,
-					0
-				);
-			}
-			else{
-				ctx.transform(
-					1, 
-					0,
-					0,
-					1,
-					transforms[i][4],
-					transforms[i][5]
-				);
-				ctx.rotate(transforms[i][6]);
-				ctx.transform(
-					transforms[i][0],
-					transforms[i][1],
-					transforms[i][2],
-					transforms[i][3],
-					0,
-					0
-				);
-			}
-			
-			draw_animated_fractal(step); 
-			ctx.restore();
-		}
-	}
-	else {
-		draw_letterF();
-	}
-}
+                if (i != max_it + 1) {
+                    curr_colour = 'black';
+                    start_step = i - 1;
+                    draw_fractal(i);
+                }
+            }
 
-function draw_letterF(){
-	ctx.fillStyle = curr_colour;
-	ctx.beginPath();
-	ctx.moveTo(0,0);
-	ctx.lineTo(200,0);
-	ctx.lineTo(200,100);
-	ctx.lineTo(100,100);
-	ctx.lineTo(100,200);
-	ctx.lineTo(200,200);
-	ctx.lineTo(200,300);
-	ctx.lineTo(100,300);
-	ctx.lineTo(100,500);
-	ctx.lineTo(0,500);
-	ctx.closePath();
-	ctx.fill();
-}
+            anim_canvas = canvases[max_it + 1];
 
-function set_prev(){
-	canvases[curr].hidden = true;
-	curr = clamp(curr - 1, 0, max_it);
-	
-	if (anim_toggled == 1){
-		anim_progress = 0;
-	}
-	else{
-		canvases[curr].hidden = false;
-	}
-}
+            canvases[0].hidden = false;
 
-function set_next(){
-	canvases[curr].hidden = true;
-	curr = clamp(curr + 1, 0, max_it);
-	
-	if (anim_toggled == 1){
-		anim_progress = 0;
-	}
-	else{
-		canvases[curr].hidden = false;
-	}
-}
+            window.requestAnimationFrame(loop);
+        }
 
-function toggle_animation(){
-	anim_toggled = 1 - anim_toggled;
-	if (anim_toggled == 1){
-		anim_progress = 0;
-		anim_canvas.hidden = false;
-		canvases[curr].hidden = true;
-		ctx = anim_canvas.getContext('2d');
-	}
-	else{
-		anim_progress = 1;
-		anim_canvas.hidden = true;
-		canvases[curr].hidden = false;
-		ctx = canvases[curr].getContext('2d');
-	}
-}
+        function loop() {
+            if (anim_toggled == 1) {
+                // draw background
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, 500, 500);
 
-</script>
+                start_step = curr - 1;
+                draw_animated_fractal(curr);
+                anim_progress = clamp(anim_progress + anim_speed, 0, 1);
+            }
+
+            window.requestAnimationFrame(loop);
+        }
+
+        // Recursive draw
+        // NOTE: I wanted to merge this function with "draw_fractal()" function, but colours don't work properly and I can't find out why
+        function draw_fractal(step) {
+            if (step > 0) {
+                step = step - 1;
+                ctx.save();
+                ctx.save();
+                ctx.save();
+
+                // top left
+                if (start_step == step) {
+                    curr_colour = 'purple';
+                }
+                ctx.transform(0, 0.5, 0.5, 0, 0, 0);
+                draw_fractal(step);
+                ctx.restore();
+
+                // top right
+                if (start_step == step) {
+                    curr_colour = 'green';
+                }
+                ctx.transform(0.5, 0, 0, -0.5, 250, 250);
+                draw_fractal(step);
+                ctx.restore();
+
+                // bottom left
+                if (start_step == step) {
+                    curr_colour = 'red';
+                }
+                ctx.transform(0.25, 0, 0, 0.25, 62.5, 312.5);
+                draw_fractal(step);
+                ctx.restore();
+
+                // bottom right
+                if (start_step == step) {
+                    curr_colour = 'orange';
+                }
+                ctx.transform(0, -0.5, 0.5, 0, 250, 500);
+                draw_fractal(step);
+            }
+            else {
+                draw_letterF();
+            }
+        }
+
+        // Recursive draw 
+        function draw_animated_fractal(step) {
+            if (step > 0) {
+                step = step - 1;
+                for (var i = 0; i < transforms.length; i++) {
+                    ctx.save();
+
+                    if (start_step == step) {
+                        curr_colour = transform_colours[i];
+
+                        ctx.transform(
+                            1,
+                            0,
+                            0,
+                            1,
+                            lerp(0, transforms[i][4], anim_progress),
+                            lerp(0, transforms[i][5], anim_progress)
+                        );
+                        ctx.rotate(lerp(0, transforms[i][6], anim_progress));
+                        ctx.transform(
+                            lerp(1, transforms[i][0], anim_progress),
+                            lerp(0, transforms[i][1], anim_progress),
+                            lerp(0, transforms[i][2], anim_progress),
+                            lerp(1, transforms[i][3], anim_progress),
+                            0,
+                            0
+                        );
+                    }
+                    else {
+                        ctx.transform(
+                            1,
+                            0,
+                            0,
+                            1,
+                            transforms[i][4],
+                            transforms[i][5]
+                        );
+                        ctx.rotate(transforms[i][6]);
+                        ctx.transform(
+                            transforms[i][0],
+                            transforms[i][1],
+                            transforms[i][2],
+                            transforms[i][3],
+                            0,
+                            0
+                        );
+                    }
+
+                    draw_animated_fractal(step);
+                    ctx.restore();
+                }
+            }
+            else {
+                draw_letterF();
+            }
+        }
+
+        function draw_letterF() {
+            ctx.fillStyle = curr_colour;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(200, 0);
+            ctx.lineTo(200, 100);
+            ctx.lineTo(100, 100);
+            ctx.lineTo(100, 200);
+            ctx.lineTo(200, 200);
+            ctx.lineTo(200, 300);
+            ctx.lineTo(100, 300);
+            ctx.lineTo(100, 500);
+            ctx.lineTo(0, 500);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function set_prev() {
+            canvases[curr].hidden = true;
+            curr = clamp(curr - 1, 0, max_it);
+
+            if (anim_toggled == 1) {
+                anim_progress = 0;
+            }
+            else {
+                canvases[curr].hidden = false;
+            }
+        }
+
+        function set_next() {
+            canvases[curr].hidden = true;
+            curr = clamp(curr + 1, 0, max_it);
+
+            if (anim_toggled == 1) {
+                anim_progress = 0;
+            }
+            else {
+                canvases[curr].hidden = false;
+            }
+        }
+
+        function toggle_animation() {
+            anim_toggled = 1 - anim_toggled;
+            if (anim_toggled == 1) {
+                anim_progress = 0;
+                anim_canvas.hidden = false;
+                canvases[curr].hidden = true;
+                ctx = anim_canvas.getContext('2d');
+            }
+            else {
+                anim_progress = 1;
+                anim_canvas.hidden = true;
+                canvases[curr].hidden = false;
+                ctx = canvases[curr].getContext('2d');
+            }
+        }
+
+    </script>
+
 </html>

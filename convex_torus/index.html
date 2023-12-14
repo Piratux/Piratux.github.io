@@ -1,211 +1,239 @@
 <html>
 
 <head>
-	<title>Torus control demo</title>
-	<script type="text/javascript" src="./libs/three.js"></script>
-	<script type="text/javascript" src="./libs/jquery-1.9.0.js"></script>
-	<script type="text/javascript" src="./libs/OrbitControls.js"></script>
-	<script type="text/javascript" src="./libs/stats.js"></script>
-	<script type="text/javascript" src="./libs/dat.gui.js"></script>
-	<script type="text/javascript" src="./libs/ConvexHull.js"></script>
-	<script type="text/javascript" src="./libs/ConvexGeometry.js"></script>
-	<script type="text/javascript" src="./libs/SceneUtils.js"></script>
-	<style>
-		body{
-			/* set margin to 0 and overflow to hidden, to go fullscreen */
-			margin: 0;
-			overflow: hidden;
-		}
-	</style>
+    <meta charset="utf-8">
+    <title>Torus control demo</title>
+
+    <script
+        type="text/javascript"
+        src="./libs/three.js"
+    ></script>
+    <script
+        type="text/javascript"
+        src="./libs/jquery-1.9.0.js"
+    ></script>
+    <script
+        type="text/javascript"
+        src="./libs/OrbitControls.js"
+    ></script>
+    <script
+        type="text/javascript"
+        src="./libs/stats.js"
+    ></script>
+    <script
+        type="text/javascript"
+        src="./libs/dat.gui.js"
+    ></script>
+    <script
+        type="text/javascript"
+        src="./libs/ConvexHull.js"
+    ></script>
+    <script
+        type="text/javascript"
+        src="./libs/ConvexGeometry.js"
+    ></script>
+    <script
+        type="text/javascript"
+        src="./libs/SceneUtils.js"
+    ></script>
+    <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
 </head>
 
 <body>
 
 
-<!-- Div which will hold the Output -->
-<div id="WebGL-output"> </div>
+    <!-- Div which will hold the Output -->
+    <div id="WebGL-output"> </div>
 
-<!-- Javascript code that runs our Three.js examples -->
-<script type="text/javascript">
+    <!-- Javascript code that runs our Three.js examples -->
+    <script type="text/javascript">
 
-	// once everything is loaded, we run our Three.js stuff.
-	$(function () {
-	
-		const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+        // once everything is loaded, we run our Three.js stuff.
+        $(function () {
 
-		// create a scene, that will hold all our elements such as objects, cameras and lights.
-		var scene = new THREE.Scene();
+            const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
 
-		// create a camera, which defines where we're looking at.
-		var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // create a scene, that will hold all our elements such as objects, cameras and lights.
+            var scene = new THREE.Scene();
 
-		// create a render and set the size
-		var renderer = new THREE.WebGLRenderer();
+            // create a camera, which defines where we're looking at.
+            var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-		renderer.setClearColor(0xEEEEEE, 1.0);
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		renderer.shadowMapEnabled = true;
-		
-		var r = 1;
-		var R = 20;
-		
-		
-		var points = new Array();
-		for(var i = 0; i < 50000; i++){
-			
-			var new_point = new THREE.Vector3(get_rand(r, R), get_rand(r, R), get_rand(r, R));
-			var x = new_point.x;
-			var y = new_point.y;
-			var z = new_point.z;
-			
-			if(Math.pow(x*x + y*y + z*z - r*r, 2) <= 4*R*R*(x*x + z*z)){
-				points.push(new_point);
-			}
-		}
-		
-		create_torus(scene, points, R);
-		add_spotlights(scene, scene.children[0]);
-	  
-		// position and point the camera to the center of the scene
-		camera.position.set(0,150,-150);
-		camera.lookAt(scene.position);
+            // create a render and set the size
+            var renderer = new THREE.WebGLRenderer();
 
-		// add the output of the renderer to the html element
-		$("#WebGL-output").append(renderer.domElement);
-		
-		// controls for camera
-		const orbit = new THREE.OrbitControls( camera, renderer.domElement );
-		orbit.update();
-		orbit.addEventListener("change", render);
-		
-		render();
-		
-		function get_rand(r, R){
-			return get_random(-(r + R+50), r + R+50);
-		}
-		
-		function get_random(min, max){
-			return Math.random() * (max - min) + min;
-		}
-		
-		function render() {
-			renderer.render( scene, camera );
-		}
-		
-		function create_material() {
-			const loader = new THREE.TextureLoader();
-			
-			// Create a 256x256 array of data representing the checker pattern
-			var data = new Uint8Array(256 * 256 * 4);
-			for (var i = 0; i < 256; i++) {
-			  for (var j = 0; j < 256; j++) {
-				// Calculate the array index for this pixel
-				var idx = (i * 256 + j) * 4;
+            // renderer.setClearColor(0xEEEEEE, 1.0);
+            renderer.setClearColor(0xD3D3D3, 1.0);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMapEnabled = true;
 
-				// Set the pixel's color based on its coordinates
-				if (Math.floor(i / 16) % 2 == Math.floor(j / 16) % 2) {
-				  // Black pixel
-				  data[idx] = 0;
-				  data[idx + 1] = 0;
-				  data[idx + 2] = 0;
-				  data[idx + 3] = 255;
-				} else {
-				  // White pixel
-				  data[idx] = 255;
-				  data[idx + 1] = 255;
-				  data[idx + 2] = 255;
-				  data[idx + 3] = 255;
-				}
-			  }
-			}
-
-			// Create the texture using the DataTexture class
-			var texture = new THREE.DataTexture(data, 256, 256, THREE.RGBAFormat);
-
-			texture.wrapS = THREE.RepeatWrapping;
-			texture.wrapT = THREE.RepeatWrapping;
-
-            var mat = new THREE.MeshPhongMaterial();
-            mat.map = texture;
-
-            return mat;
-        }
-		
-		function create_torus(scene, points, R){
-			var wireFrameMat = new THREE.MeshBasicMaterial();
-			wireFrameMat.wireframe = true;
-		
-			var geom = new THREE.ConvexGeometry(points);
-		
-			for(var i = 0; i < geom.faces.length; i++){
-				var points = new Array();
-				points.push(new THREE.Vector2());
-				points.push(new THREE.Vector2());
-				points.push(new THREE.Vector2());
-				
-				var vertices = new Array();
-				vertices.push(geom.vertices[geom.faces[i].a]);
-				vertices.push(geom.vertices[geom.faces[i].b]);
-				vertices.push(geom.vertices[geom.faces[i].c]);
-
-				for(var j = 0; j < 3; j++){
-					points[j].x = (Math.atan2(vertices[j].x, vertices[j].z) + Math.PI) / (2 * Math.PI);
-					points[j].y = 0.5 - Math.asin(vertices[j].y / R) / Math.PI;
-				}
-				
-				var limit = 0.2;
-				if(points[0].x < limit && points[1].x < limit && points[2].x > (1 - limit)){
-					points[2].x -= 1;
-				}
-				else if(points[0].x < limit && points[2].x < limit && points[1].x > (1 - limit)){
-					points[1].x -= 1;
-				}
-				else if(points[1].x < limit && points[2].x < limit && points[0].x > (1 - limit)){
-					points[0].x -= 1;
-				}
-				else if(points[0].x < limit && points[1].x > (1 - limit) && points[2].x > (1 - limit)){
-					points[0].x += 1;
-				}
-				else if(points[2].x < limit && points[0].x > (1 - limit) && points[1].x > (1 - limit)){
-					points[2].x += 1;
-				}
-				else if(points[1].x < limit && points[2].x > (1 - limit) && points[0].x > (1 - limit)){
-					points[1].x += 1;
-				}
-
-				geom.faceVertexUvs[0].push(points);
-			}
-			geom.uvsNeedUpdate = true;
-			var mat = create_material();
-			var mesh = THREE.SceneUtils.createMultiMaterialObject(geom, [mat, wireFrameMat]);
-			scene.add(mesh);
-		}
-		
-		function add_spotlights(scene, mesh){
-			var dist = 100;
-			var posx = new Array(1, -1, 0, 0, 0, 0);
-			var posy = new Array(0, 0, 1, -1, 0, 0);
-			var posz = new Array(0, 0, 0, 0, 1, -1);
-			for(var i = 0; i < 6; i++){
-				var spotLight = new THREE.SpotLight( 0xadadad );
-				spotLight.position.set( posx[i]*dist, posy[i]*dist, posz[i]*dist );
-				spotLight.position.add(mesh.position);
-				spotLight.target = mesh;
-				scene.add( spotLight );
-			}
-		}
-		
-		function r(num){
-			return num.toFixed(3);
-		}
-		
-		function print(obj_name, obj){
-			console.log(obj_name + ': ' + JSON.stringify(obj, null, 4));
-		}
-	});
+            var r = 1;
+            var R = 20;
 
 
+            var points = new Array();
+            for (var i = 0; i < 50000; i++) {
 
-</script>
+                var new_point = new THREE.Vector3(get_rand(r, R), get_rand(r, R), get_rand(r, R));
+                var x = new_point.x;
+                var y = new_point.y;
+                var z = new_point.z;
+
+                if (Math.pow(x * x + y * y + z * z - r * r, 2) <= 4 * R * R * (x * x + z * z)) {
+                    points.push(new_point);
+                }
+            }
+
+            create_torus(scene, points, R);
+            add_spotlights(scene, scene.children[0]);
+
+            // position and point the camera to the center of the scene
+            camera.position.set(0, 150, -150);
+            camera.lookAt(scene.position);
+
+            // add the output of the renderer to the html element
+            $("#WebGL-output").append(renderer.domElement);
+
+            // controls for camera
+            const orbit = new THREE.OrbitControls(camera, renderer.domElement);
+            orbit.update();
+            orbit.addEventListener("change", render);
+
+            render();
+
+            function get_rand(r, R) {
+                return get_random(-(r + R + 50), r + R + 50);
+            }
+
+            function get_random(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            function render() {
+                renderer.render(scene, camera);
+            }
+
+            function create_material() {
+                const loader = new THREE.TextureLoader();
+
+                // Create a 256x256 array of data representing the checker pattern
+                var data = new Uint8Array(256 * 256 * 4);
+                for (var i = 0; i < 256; i++) {
+                    for (var j = 0; j < 256; j++) {
+                        // Calculate the array index for this pixel
+                        var idx = (i * 256 + j) * 4;
+
+                        // Set the pixel's color based on its coordinates
+                        if (Math.floor(i / 16) % 2 == Math.floor(j / 16) % 2) {
+                            // Black pixel
+                            data[idx] = 0;
+                            data[idx + 1] = 0;
+                            data[idx + 2] = 0;
+                            data[idx + 3] = 255;
+                        } else {
+                            // White pixel
+                            data[idx] = 255;
+                            data[idx + 1] = 255;
+                            data[idx + 2] = 255;
+                            data[idx + 3] = 255;
+                        }
+                    }
+                }
+
+                // Create the texture using the DataTexture class
+                var texture = new THREE.DataTexture(data, 256, 256, THREE.RGBAFormat);
+
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+
+                var mat = new THREE.MeshPhongMaterial();
+                mat.map = texture;
+
+                return mat;
+            }
+
+            function create_torus(scene, points, R) {
+                var wireFrameMat = new THREE.MeshBasicMaterial();
+                wireFrameMat.wireframe = true;
+
+                var geom = new THREE.ConvexGeometry(points);
+
+                for (var i = 0; i < geom.faces.length; i++) {
+                    var points = new Array();
+                    points.push(new THREE.Vector2());
+                    points.push(new THREE.Vector2());
+                    points.push(new THREE.Vector2());
+
+                    var vertices = new Array();
+                    vertices.push(geom.vertices[geom.faces[i].a]);
+                    vertices.push(geom.vertices[geom.faces[i].b]);
+                    vertices.push(geom.vertices[geom.faces[i].c]);
+
+                    for (var j = 0; j < 3; j++) {
+                        points[j].x = (Math.atan2(vertices[j].x, vertices[j].z) + Math.PI) / (2 * Math.PI);
+                        points[j].y = 0.5 - Math.asin(vertices[j].y / R) / Math.PI;
+                    }
+
+                    var limit = 0.2;
+                    if (points[0].x < limit && points[1].x < limit && points[2].x > (1 - limit)) {
+                        points[2].x -= 1;
+                    }
+                    else if (points[0].x < limit && points[2].x < limit && points[1].x > (1 - limit)) {
+                        points[1].x -= 1;
+                    }
+                    else if (points[1].x < limit && points[2].x < limit && points[0].x > (1 - limit)) {
+                        points[0].x -= 1;
+                    }
+                    else if (points[0].x < limit && points[1].x > (1 - limit) && points[2].x > (1 - limit)) {
+                        points[0].x += 1;
+                    }
+                    else if (points[2].x < limit && points[0].x > (1 - limit) && points[1].x > (1 - limit)) {
+                        points[2].x += 1;
+                    }
+                    else if (points[1].x < limit && points[2].x > (1 - limit) && points[0].x > (1 - limit)) {
+                        points[1].x += 1;
+                    }
+
+                    geom.faceVertexUvs[0].push(points);
+                }
+                geom.uvsNeedUpdate = true;
+                var mat = create_material();
+                var mesh = THREE.SceneUtils.createMultiMaterialObject(geom, [mat, wireFrameMat]);
+                scene.add(mesh);
+            }
+
+            function add_spotlights(scene, mesh) {
+                var dist = 100;
+                var posx = new Array(1, -1, 0, 0, 0, 0);
+                var posy = new Array(0, 0, 1, -1, 0, 0);
+                var posz = new Array(0, 0, 0, 0, 1, -1);
+                for (var i = 0; i < 6; i++) {
+                    var spotLight = new THREE.SpotLight(0xadadad);
+                    spotLight.position.set(posx[i] * dist, posy[i] * dist, posz[i] * dist);
+                    spotLight.position.add(mesh.position);
+                    spotLight.target = mesh;
+                    scene.add(spotLight);
+                }
+            }
+
+            function r(num) {
+                return num.toFixed(3);
+            }
+
+            function print(obj_name, obj) {
+                console.log(obj_name + ': ' + JSON.stringify(obj, null, 4));
+            }
+        });
+
+
+
+    </script>
 </body>
+
 </html>
