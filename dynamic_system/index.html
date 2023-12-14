@@ -155,6 +155,29 @@
             evaluateFunction();
         }
 
+        function filterRepeatingValues(inputArray) {
+            // Use a Set to keep track of unique values
+            let uniqueValuesSet = new Set();
+
+            // Use Array.filter to iterate through the inputArray and filter out repeating values
+            let resultArray = inputArray.filter(function (value) {
+                // Convert the value to a string to handle floating-point precision
+                value.x = Math.round(value.x * 200) / 200; // round to closest 0.005
+                value.y = Math.round(value.y * 200) / 200; // round to closest 0.005
+                let stringValue = value.x.toString() + " " + value.y.toString();
+
+                // Check if the value is already in the set
+                if (uniqueValuesSet.has(stringValue)) {
+                    return false; // If it's a repeating value, filter it out
+                } else {
+                    uniqueValuesSet.add(stringValue); // Add the value to the set if it's unique
+                    return true; // Include the value in the result array
+                }
+            });
+
+            return resultArray;
+        }
+
         function evaluateFunction() {
             // Hardcoded function and default values
             const aValueInput = parseFloat(document.getElementById('aValueInput').value);
@@ -207,29 +230,56 @@
             // Plot the array using Chart.js
             drawLinesAndFunction(arrayB);
 
-            plotFaigenbaumTree(getFaigenbaumTreePoints());
+            let faigenbaumTreePoints;
+            let faigenbaumTreeBifurcationValues;
+            [faigenbaumTreePoints, faigenbaumTreeBifurcationValues] = getFaigenbaumTreePointsAndBifurcationValues();
+            faigenbaumTreePoints = filterRepeatingValues(faigenbaumTreePoints);
+            plotFaigenbaumTree(faigenbaumTreePoints, faigenbaumTreeBifurcationValues);
         }
 
-        function getFaigenbaumTreePoints() {
+        // returns:
+        // - plot points
+        // - array of 'a' values where bifurcation happens (currently hardcoded for ax(1-x) function)
+        function getFaigenbaumTreePointsAndBifurcationValues() {
             const skippedIterations = -50;
             const orbitIterations = 20;
             const aPrecisionIterations = 100;
             const aRange = 3.0;
             const aOffset = 1.0;
-            const xValueInput = document.getElementById('xValueInput').value;;
+            const xValueInput = 0.2;
+            const bifurcationValuesRequired = 3;
             let points = [];
+            let bifurcationValues = [3.01, 3.46, 3.55]; // TODO: properly calculate it for any function
+
             for (let a = 0; a <= aPrecisionIterations; a++) {
                 let yValue = 0;
                 let aValue = aOffset + aRange * (a / aPrecisionIterations);
+                let iterationPoints = [];
                 for (let index = skippedIterations; index <= orbitIterations; index++) {
                     let lastYValue = yValue;
                     yValue = index === skippedIterations ? xValueInput : dynamicFunction(lastYValue, aValue);
                     if (index >= 0) {
                         points.push({ x: aValue, y: yValue });
+                        iterationPoints.push({ x: aValue, y: yValue });
                     }
                 }
             }
-            return points;
+
+            return [points, bifurcationValues];
+        }
+
+        function getTitle(text) {
+            return {
+                display: true,
+                align: "end",
+                text: text,
+                color: 'black',
+                font: {
+                    family: 'Arial',
+                    size: 14,
+                    weight: 'bold'
+                }
+            }
         }
 
         function plotArray(points) {
@@ -251,12 +301,14 @@
                         x: {
                             type: 'linear',
                             position: 'bottom',
+                            title: getTitle("x"),
                         },
                         y: {
                             type: 'linear',
                             position: 'left',
                             suggestedMin: 0, // Start from y = 0
-                        }
+                            title: getTitle("y"),
+                        },
                     }
                 }
             });
@@ -269,11 +321,34 @@
 
             const ctx = document.getElementById('graphicalIterationCanvas').getContext('2d');
 
+            const xValues = points.map(point => point.x);
+            const yValues = points.map(point => point.y);
+
+            // Find min and max x and y values
+            const minX = Math.min(...xValues);
+            const maxX = Math.max(...xValues);
+            const minY = Math.min(...yValues);
+            const maxY = Math.max(...yValues);
+
+            const paddingValue = 0.02;
+            const paddingX = paddingValue * Math.abs(minX - maxX);
+            const paddingY = paddingValue * Math.abs(minY - maxY);
+            const minValue = Math.min(minX, minY) - paddingX;
+            const maxValue = Math.max(maxX, maxY) + paddingY;
+
+
             const data = {
                 datasets: [{
                     label: 'Graphical iteration',
                     borderColor: 'rgba(75, 192, 192, 1)',
                     data: points,
+                    fill: false,
+                }, {
+                    label: "y = x",
+                    data: [{ x: minValue, y: minValue }, { x: maxValue, y: maxValue }],
+                    borderColor: 'orange',
+                    borderWidth: 2,
+                    type: 'line',
                     fill: false,
                 }]
             };
@@ -283,10 +358,16 @@
                     x: {
                         type: 'linear',
                         position: 'bottom',
+                        min: minValue,
+                        max: maxValue,
+                        title: getTitle("x"),
                     },
                     y: {
                         type: 'linear',
                         position: 'left',
+                        min: minValue,
+                        max: maxValue,
+                        title: getTitle("y"),
                     }
                 }
             };
@@ -299,30 +380,46 @@
             });
         }
 
-        function plotFaigenbaumTree(points) {
+        function plotFaigenbaumTree(points, bifurcationValues) {
             if (faigenbaumTreeChart) {
                 faigenbaumTreeChart.destroy();
+            }
+
+            let datasets = [{
+                label: 'Faigenbaum tree',
+                data: points,
+                borderColor: "black",
+            }];
+
+            for (let i = 0; i < bifurcationValues.length; i++) {
+                datasets.push({
+                    label: `Bifurcation value ${i + 1}`,
+                    data: [{ x: bifurcationValues[i], y: 0 }, { x: bifurcationValues[i], y: 1 }],
+                    borderColor: 'red',
+                    borderWidth: 2,
+                    type: 'line',
+                    fill: false,
+                });
             }
 
             const ctx = document.getElementById('faigenbaumTreeCanvas').getContext('2d');
             faigenbaumTreeChart = new Chart(ctx, {
                 type: 'scatter',
                 data: {
-                    datasets: [{
-                        label: 'Faigenbaum tree',
-                        data: points,
-                    }]
+                    datasets: datasets
                 },
                 options: {
                     scales: {
                         x: {
                             type: 'linear',
                             position: 'bottom',
+                            title: getTitle("a"),
                         },
                         y: {
                             type: 'linear',
                             position: 'left',
-                        }
+                            title: getTitle("x"),
+                        },
                     }
                 }
             });
