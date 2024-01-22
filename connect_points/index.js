@@ -33,6 +33,11 @@ let last_grid_circle_y = -1;
 // Array of connection defining arrays
 let grid_connection_data = [];
 
+// Undo/redo data (stored as stacks)
+let max_memento_size = 100;
+let undo_mementos = [];
+let redo_mementos = [];
+
 // Array of 1 and 0s where 1 = vertex is taken
 let taken_vertices = [];
 
@@ -78,6 +83,18 @@ window.onload = function () {
 
     setInterval(draw_everything, 1000 / 60);
 }
+
+document.addEventListener('keydown', function (event) {
+    // Check if Ctrl key is pressed and "Z" key is pressed
+    if (event.ctrlKey && event.key === 'z') {
+        // Call your function here
+        perform_undo();
+    }
+    else if (event.ctrlKey && event.key === 'y') {
+        // Call your function here
+        perform_redo();
+    }
+});
 
 function draw_everything() {
     canvas_ctx.fillStyle = 'white';
@@ -169,7 +186,6 @@ function draw_grid_circles() {
                 else {
                     draw_circle(pos_x, pos_y, circle_radius, colour_blue);
                 }
-                // draw_circle(pos_x, pos_y, circle_radius, colour_blue);
             }
         }
     }
@@ -281,6 +297,9 @@ function draw_line(from_x, from_y, to_x, to_y, style) {
 }
 
 function reset_grid() {
+    undo_mementos.push(structuredClone(grid_connection_data));
+    redo_mementos = [];
+
     grid_connection_data.length = 0;
     update_connection_info();
 }
@@ -439,6 +458,8 @@ function add_grid_entry_if_needed(mouse_pos_x, mouse_pos_y) {
         simplified_vector.y *= -1;
     }
 
+    undo_mementos.push(structuredClone(grid_connection_data));
+
     for (let i = 0; i < vector_count; i++) {
         grid_connection_data.push([
             a_x + simplified_vector.x * i,
@@ -451,6 +472,20 @@ function add_grid_entry_if_needed(mouse_pos_x, mouse_pos_y) {
     // remove duplicate entries
     // https://stackoverflow.com/a/44014849
     grid_connection_data = Array.from(new Set(grid_connection_data.map(JSON.stringify)), JSON.parse)
+
+    // revert new action from undo stack, if nothing was added
+    if (undo_mementos[undo_mementos.length - 1].length === grid_connection_data.length) {
+        undo_mementos.pop();
+    }
+    else {
+        // otherwise, new action appeared, clear redo stack
+        redo_mementos = [];
+
+        // don't store too many undo actions
+        if (undo_mementos.length > max_memento_size) {
+            undo_mementos.shift();
+        }
+    }
 
     update_connection_info();
 }
@@ -471,6 +506,8 @@ function remove_grid_entry_if_needed(mouse_pos_x, mouse_pos_y) {
         return;
     }
 
+    undo_mementos.push(structuredClone(grid_connection_data));
+
     let arr_to_remove1 = [old_last_grid_circle_x, old_last_grid_circle_y, last_grid_circle_x, last_grid_circle_y];
     let arr_to_remove2 = [last_grid_circle_x, last_grid_circle_y, old_last_grid_circle_x, old_last_grid_circle_y];
 
@@ -490,6 +527,43 @@ function remove_grid_entry_if_needed(mouse_pos_x, mouse_pos_y) {
             grid_connection_data.splice(i, 1);
         }
     }
+
+    // revert new action from undo stack, if nothing was added
+    if (undo_mementos[undo_mementos.length - 1].length === grid_connection_data.length) {
+        undo_mementos.pop();
+    }
+    else {
+        // otherwise, new action appeared, clear redo stack
+        redo_mementos = [];
+
+        // don't store too many undo actions
+        if (undo_mementos.length > max_memento_size) {
+            undo_mementos.shift();
+        }
+    }
+
+    update_connection_info();
+}
+
+// NOTE: Only works with connections. Doesn't work with grid size changes or other parameters.
+function perform_undo() {
+    if (undo_mementos.length === 0) {
+        return;
+    }
+
+    redo_mementos.push(structuredClone(grid_connection_data));
+    grid_connection_data = undo_mementos.pop();
+
+    update_connection_info();
+}
+
+function perform_redo() {
+    if (redo_mementos.length === 0) {
+        return;
+    }
+
+    undo_mementos.push(structuredClone(grid_connection_data));
+    grid_connection_data = redo_mementos.pop();
 
     update_connection_info();
 }

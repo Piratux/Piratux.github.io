@@ -65,7 +65,9 @@
                 Auto connect circles
                 <br />
 
-                <button onclick="reset_grid()">Reset connections</button>
+                <button onclick="reset_grid()" style="margin-right: 2em;">Reset connections</button>
+                <button onclick="perform_undo()">Undo</button>
+                <button onclick="perform_redo()">Redo</button>
             </div>
 
             <div class="function_column">
@@ -104,6 +106,10 @@
                 - Hold left mouse button: connect circles with an edge.
                 <br />
                 - Hold right mouse button: disconnect circles by removing edge between them (if there is one).
+                <br />
+                - CTRL+Z: undo connection.
+                <br />
+                - CTRL+Y: redo connection.
             </p>
         </div>
 
