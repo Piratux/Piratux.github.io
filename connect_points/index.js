@@ -125,11 +125,11 @@ function parse_grid_import_file(content) {
     const result = [];
 
     for (let i = 0; i < lines.length; i++) {
-        const numbers = lines[i].trim().split(/\s+/).map(Number);
+        let numbers = lines[i].trim().split(/\s+/).map(Number);
 
-        // Check if each line contains exactly 4 numbers
-        if (numbers.length !== 4) {
-            alert(`Import error in line ${i + 1}: Each line must contain exactly 4 numbers.`);
+        // Check if each line contains exactly 2 numbers
+        if (numbers.length !== 2) {
+            alert(`Import error in line ${i + 1}: Each line must contain exactly 2 numbers.`);
             return null;
         }
 
@@ -140,12 +140,19 @@ function parse_grid_import_file(content) {
         }
 
         // Check if each number is in the range [0, N-1]
-        if (numbers.some(num => num < 0 || num >= grid_size)) {
-            alert(`Import error in line ${i + 1}: Each number must be in the range [0, ${grid_size - 1}].`);
+        if (numbers.some(num => num <= 0 || num > grid_size * grid_size)) {
+            alert(`Import error in line ${i + 1}: Each number must be in the range [1, ${grid_size * grid_size}].`);
             return null;
         }
 
-        result.push(numbers);
+        // convert from
+        // [1, N*N] grid indexes
+        // to
+        // [from_x, from_y, to_x, to_y] each in range [0, N-1]
+        numbers = numbers.map((num) => num - 1);
+        let edge_from = make_2D_index(numbers[0], grid_size);
+        let edge_to = make_2D_index(numbers[1], grid_size);
+        result.push([edge_from[0], edge_from[1], edge_to[0], edge_to[1]]);
     }
 
     return result;
@@ -168,7 +175,19 @@ function download(content, filename, contentType) {
 }
 
 function export_grid() {
-    const content = grid_connection_data.map(row => row.join(' ')).join('\n');
+    // convert from
+    // [from_x, from_y, to_x, to_y] each in range [0, N-1]
+    // to
+    // [1, N*N] grid indexes
+    let mapped_grid_connection_data = [];
+    grid_connection_data.forEach((connection) => {
+        mapped_grid_connection_data.push([
+            make_1D_index(connection[0], connection[1], grid_size) + 1,
+            make_1D_index(connection[2], connection[3], grid_size) + 1
+        ]);
+    });
+
+    const content = mapped_grid_connection_data.map(row => row.join(' ')).join('\n');
     download(content, "grid_data.txt", "text/plain")
 }
 
@@ -236,6 +255,12 @@ function segments_intersect(p1, q1, p2, q2) {
 
 function make_1D_index(x, y, arr_width) {
     return y * arr_width + x;
+}
+
+function make_2D_index(i, arr_width) {
+    const y = Math.floor(i / arr_width);
+    const x = i % arr_width;
+    return [x, y];
 }
 
 function draw_grid_circles() {

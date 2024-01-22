@@ -134,14 +134,15 @@
                 cols=80
                 readonly
             >
-edge_1_from_x edge_1_from_y edge_1_to_x edge_1_to_y
-edge_2_from_x edge_2_from_y edge_2_to_x edge_2_to_y
+edge_1_from_idx edge_1_to_idx
+edge_2_from_idx edge_2_to_idx
 ...
-edge_n_from_x edge_n_from_y edge_n_to_x edge_n_to_y</textarea>
+edge_n_from_idx edge_n_to_idx</textarea>
             <br />
-            Here, "from" and "to" position coordinates start from 0.
+            Here, "from" and "to" index coordinates start from 1.
             <br />
-            Invalid connections (such as edge connecting vertex A with vertex A or duplicate connection) upon import will be automatically removed.
+            Invalid connections (such as edge connecting vertex A with vertex A or duplicate connection) upon import
+            will be automatically removed.
             <br />
             Example of valid import grid data for 4x4 grid:
             <textarea
@@ -149,8 +150,9 @@ edge_n_from_x edge_n_from_y edge_n_to_x edge_n_to_y</textarea>
                 cols=80
                 readonly
             >
-1 0 2 3
-2 3 3 3</textarea>
+1 5
+5 3
+3 12</textarea>
         </p>
 
         <h2>
