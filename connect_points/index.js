@@ -82,19 +82,104 @@ window.onload = function () {
     set_total_connections(0);
 
     setInterval(draw_everything, 1000 / 60);
+
+    document.getElementById('file_input').addEventListener('change', file_import);
+    document.addEventListener('keydown', key_input);
 }
 
-document.addEventListener('keydown', function (event) {
-    // Check if Ctrl key is pressed and "Z" key is pressed
+function file_import() {
+    // Ensure a file is selected
+    if (this.files.length === 0) {
+        return;
+    }
+
+    const selectedFile = this.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+        const content = e.target.result;
+        const parsed_grid_data = parse_grid_import_file(content);
+        if (!parsed_grid_data) {
+            return;
+        }
+
+        undo_mementos.push(structuredClone(grid_connection_data));
+        redo_mementos = [];
+
+        grid_connection_data = [];
+
+        parsed_grid_data.forEach((connection) => {
+            try_add_new_grid_connection(connection, false);
+        });
+
+        console.log("Imported grid data: ", grid_connection_data);
+
+        update_connection_info();
+    };
+
+    reader.readAsText(selectedFile);
+}
+
+function parse_grid_import_file(content) {
+    const lines = content.trim().split('\n');
+    const result = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const numbers = lines[i].trim().split(/\s+/).map(Number);
+
+        // Check if each line contains exactly 4 numbers
+        if (numbers.length !== 4) {
+            alert(`Import error in line ${i + 1}: Each line must contain exactly 4 numbers.`);
+            return null;
+        }
+
+        // Check if each number is an integer
+        if (numbers.some(isNaN) || numbers.some(num => !Number.isInteger(num))) {
+            alert(`Import error in line ${i + 1}: Each number must be an integer.`);
+            return null;
+        }
+
+        // Check if each number is in the range [0, N-1]
+        if (numbers.some(num => num < 0 || num >= grid_size)) {
+            alert(`Import error in line ${i + 1}: Each number must be in the range [0, ${grid_size - 1}].`);
+            return null;
+        }
+
+        result.push(numbers);
+    }
+
+    return result;
+}
+
+function import_grid() {
+    document.getElementById("file_input").click();
+}
+
+function download(content, filename, contentType) {
+    if (!contentType) {
+        contentType = "application/octet-stream";
+    }
+
+    var a = document.createElement("a");
+    var blob = new Blob([content], { "type": contentType });
+    a.href = window.URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+}
+
+function export_grid() {
+    const content = grid_connection_data.map(row => row.join(' ')).join('\n');
+    download(content, "grid_data.txt", "text/plain")
+}
+
+function key_input(event) {
     if (event.ctrlKey && event.key === 'z') {
-        // Call your function here
         perform_undo();
     }
     else if (event.ctrlKey && event.key === 'y') {
-        // Call your function here
         perform_redo();
     }
-});
+}
 
 function draw_everything() {
     canvas_ctx.fillStyle = 'white';
@@ -111,7 +196,7 @@ function draw_everything() {
 // 0 --> p, q and r are collinear
 // 1 --> Clockwise
 // 2 --> Counterclockwise
-function orientation(p, q, r) {
+function triangle_orientation(p, q, r) {
     // See https://www.geeksforgeeks.org/orientation-3-ordered-points/
     // for details of below formula.
     let val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
@@ -138,10 +223,10 @@ function segments_intersect(p1, q1, p2, q2) {
         return false;
 
 
-    let o1 = orientation(p1, q1, p2);
-    let o2 = orientation(p1, q1, q2);
-    let o3 = orientation(p2, q2, p1);
-    let o4 = orientation(p2, q2, q1);
+    let o1 = triangle_orientation(p1, q1, p2);
+    let o2 = triangle_orientation(p1, q1, q2);
+    let o3 = triangle_orientation(p2, q2, p1);
+    let o4 = triangle_orientation(p2, q2, q1);
 
     if (o1 != o2 && o3 != o4)
         return true;
@@ -406,6 +491,77 @@ function calculate_intersection_location(mouse_pos_x, mouse_pos_y) {
     return []
 }
 
+function try_add_new_grid_connection(connection, add_to_undo_stack) {
+    let [from_x, from_y, to_x, to_y] = connection;
+
+    let from_idx = make_1D_index(from_x, from_y, grid_size);
+    let to_idx = make_1D_index(to_x, to_y, grid_size);
+
+    // we don't want want connections going from same to same element
+    if (from_idx == to_idx) {
+        return;
+    }
+
+    let vec_x = Math.abs(from_x - to_x);
+    let vec_y = Math.abs(from_y - to_y);
+
+    let vector_count = gcd(vec_x, vec_y);
+    let simplified_vector = { x: vec_x / vector_count, y: vec_y / vector_count };
+
+    if (from_x > to_x) {
+        simplified_vector.x *= -1;
+    }
+
+    if (from_y > to_y) {
+        simplified_vector.y *= -1;
+    }
+
+    // hack to avoid adding duplicate data such as:
+    // (0, 1) -> (2, 3)
+    // (2, 3) -> (0, 1)
+    if (from_idx > to_idx) {
+        [from_x, to_x] = [to_x, from_x];
+        [from_y, to_y] = [to_y, from_y];
+        simplified_vector.x *= -1;
+        simplified_vector.y *= -1;
+    }
+
+    if (add_to_undo_stack) {
+        undo_mementos.push(structuredClone(grid_connection_data));
+    }
+
+    for (let i = 0; i < vector_count; i++) {
+        grid_connection_data.push([
+            from_x + simplified_vector.x * i,
+            from_y + simplified_vector.y * i,
+            from_x + simplified_vector.x * (i + 1),
+            from_y + simplified_vector.y * (i + 1)
+        ]);
+    }
+
+    // remove duplicate entries
+    // https://stackoverflow.com/a/44014849
+    grid_connection_data = Array.from(new Set(grid_connection_data.map(JSON.stringify)), JSON.parse);
+
+    if (add_to_undo_stack) {
+        // revert new action from undo stack, if nothing was added
+        if (undo_mementos[undo_mementos.length - 1].length === grid_connection_data.length) {
+            undo_mementos.pop();
+        }
+        else {
+            // otherwise, new action appeared, clear redo stack
+            redo_mementos = [];
+
+            // don't store too many undo actions
+            if (undo_mementos.length > max_memento_size) {
+                undo_mementos.shift();
+            }
+        }
+    }
+
+    update_connection_info();
+}
+
 function add_grid_entry_if_needed(mouse_pos_x, mouse_pos_y) {
     let intersection = calculate_intersection_location(mouse_pos_x, mouse_pos_y);
     if (intersection.length == 0) {
@@ -422,72 +578,12 @@ function add_grid_entry_if_needed(mouse_pos_x, mouse_pos_y) {
         return;
     }
 
-    let a_x = old_last_grid_circle_x;
-    let a_y = old_last_grid_circle_y;
-    let b_x = last_grid_circle_x;
-    let b_y = last_grid_circle_y;
-    let from_idx = make_1D_index(a_x, a_y, max_grid_size - 1);
-    let to_idx = make_1D_index(b_x, b_y, max_grid_size - 1);
+    let from_x = old_last_grid_circle_x;
+    let from_y = old_last_grid_circle_y;
+    let to_x = last_grid_circle_x;
+    let to_y = last_grid_circle_y;
 
-    // we don't want want connections going from same to same element
-    if (from_idx == to_idx) {
-        return;
-    }
-
-    let vec_x = Math.abs(a_x - b_x);
-    let vec_y = Math.abs(a_y - b_y);
-
-    let vector_count = gcd(vec_x, vec_y);
-    let simplified_vector = { x: vec_x / vector_count, y: vec_y / vector_count };
-
-    if (a_x > b_x) {
-        simplified_vector.x *= -1;
-    }
-
-    if (a_y > b_y) {
-        simplified_vector.y *= -1;
-    }
-
-    // hack to avoid adding duplicate data such as:
-    // (0, 1) -> (2, 3)
-    // (2, 3) -> (0, 1)
-    if (from_idx > to_idx) {
-        [a_x, b_x] = [b_x, a_x];
-        [a_y, b_y] = [b_y, a_y];
-        simplified_vector.x *= -1;
-        simplified_vector.y *= -1;
-    }
-
-    undo_mementos.push(structuredClone(grid_connection_data));
-
-    for (let i = 0; i < vector_count; i++) {
-        grid_connection_data.push([
-            a_x + simplified_vector.x * i,
-            a_y + simplified_vector.y * i,
-            a_x + simplified_vector.x * (i + 1),
-            a_y + simplified_vector.y * (i + 1)
-        ]);
-    }
-
-    // remove duplicate entries
-    // https://stackoverflow.com/a/44014849
-    grid_connection_data = Array.from(new Set(grid_connection_data.map(JSON.stringify)), JSON.parse)
-
-    // revert new action from undo stack, if nothing was added
-    if (undo_mementos[undo_mementos.length - 1].length === grid_connection_data.length) {
-        undo_mementos.pop();
-    }
-    else {
-        // otherwise, new action appeared, clear redo stack
-        redo_mementos = [];
-
-        // don't store too many undo actions
-        if (undo_mementos.length > max_memento_size) {
-            undo_mementos.shift();
-        }
-    }
-
-    update_connection_info();
+    try_add_new_grid_connection([from_x, from_y, to_x, to_y], true);
 }
 
 function remove_grid_entry_if_needed(mouse_pos_x, mouse_pos_y) {

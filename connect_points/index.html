@@ -14,6 +14,13 @@
         src="./index.js"
     ></script>
 
+    <input
+        type="file"
+        id="file_input"
+        accept=".txt"
+        hidden
+    >
+
     <div class="maxwidth">
         <h1>
             Grid connector
@@ -63,17 +70,6 @@
                     checked
                 >
                 Auto connect circles
-                <br />
-
-                <button onclick="reset_grid()" style="margin-right: 2em;">Reset connections</button>
-                <button onclick="perform_undo()">Undo</button>
-                <button onclick="perform_redo()">Redo</button>
-            </div>
-
-            <div class="function_column">
-                d(G):
-                <span id="d_g">0</span>
-                <br />
             </div>
 
             <div class="info_column">
@@ -85,8 +81,24 @@
 
                 Total connections:
                 <span id="total_connections">0</span>
+                <br />
+
+                d(G):
+                <span id="d_g">0</span>
             </div>
         </div>
+
+        <button
+            onclick="reset_grid()"
+            style="margin-right: 2em;"
+        >Reset connections</button>
+        <button onclick="perform_undo()">Undo</button>
+        <button
+            onclick="perform_redo()"
+            style="margin-right: 2em;"
+        >Redo</button>
+        <button onclick="import_grid()">Import</button>
+        <button onclick="export_grid()">Export</button>
     </div>
 
     <div class="centered">
@@ -98,38 +110,64 @@
     </div>
 
     <div class="maxwidth">
-        <div class="controls">
-            <h2>
-                Controls
-            </h2>
-            <p>
-                - Hold left mouse button: connect circles with an edge.
-                <br />
-                - Hold right mouse button: disconnect circles by removing edge between them (if there is one).
-                <br />
-                - CTRL+Z: undo connection.
-                <br />
-                - CTRL+Y: redo connection.
-            </p>
-        </div>
+        <h2>
+            Controls
+        </h2>
+        <p>
+            - Hold left mouse button: connect circles with an edge.
+            <br />
+            - Hold right mouse button: disconnect circles by removing edge between them (if there is one).
+            <br />
+            - CTRL+Z: undo connection.
+            <br />
+            - CTRL+Y: redo connection.
+        </p>
 
-        <div class="info">
-            <h2>
-                Motivation
-            </h2>
-            <p>
-                This page was made to aid solving graph connection related problems.
-            </p>
-            <p>
-                Problem 1: Given Hamiltonian cycle whose edges do not self-intersect, find such cycle that maximises
-                d(G).
-                <br />
-                <img
-                    src="Images/formulas.png"
-                    alt="Problem formulas"
-                >
-            </p>
-        </div>
+        <h2>
+            Import/Export
+        </h2>
+        <p>
+            Data is imported/exported in following format:
+            <br />
+            <textarea
+                rows=4
+                cols=80
+                readonly
+            >
+edge_1_from_x edge_1_from_y edge_1_to_x edge_1_to_y
+edge_2_from_x edge_2_from_y edge_2_to_x edge_2_to_y
+...
+edge_n_from_x edge_n_from_y edge_n_to_x edge_n_to_y</textarea>
+            <br />
+            Here, "from" and "to" position coordinates start from 0.
+            <br />
+            Invalid connections (such as edge connecting vertex A with vertex A or duplicate connection) upon import will be automatically removed.
+            <br />
+            Example of valid import grid data for 4x4 grid:
+            <textarea
+                rows=4
+                cols=80
+                readonly
+            >
+1 0 2 3
+2 3 3 3</textarea>
+        </p>
+
+        <h2>
+            Motivation
+        </h2>
+        <p>
+            This page was made to aid solving graph connection related problems.
+        </p>
+        <p>
+            Problem 1: Given Hamiltonian cycle whose edges do not self-intersect, find such cycle that maximises
+            d(G).
+            <br />
+            <img
+                src="Images/formulas.png"
+                alt="Problem formulas"
+            >
+        </p>
 
         <p>
             <br />
