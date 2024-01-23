@@ -2,26 +2,26 @@ let canvas;
 let canvas_ctx;
 
 let grid_size = 4;
-let min_grid_size = 1;
-let max_grid_size = 50;
+const min_grid_size = 1;
+const max_grid_size = 50;
 
 let circle_line_width_increment = 2;
 let line_width = 6;
-let min_line_width = 2;
-let max_line_width = 20;
+const min_line_width = 2;
+const max_line_width = 20;
 
 let circle_spacing_increment = 5;
 let circle_spacing = 80;
-let min_circle_spacing = 20;
-let max_circle_spacing = 100;
+const min_circle_spacing = 20;
+const max_circle_spacing = 100;
 
-let circle_radius_increment = 5;
 let circle_radius = 15;
-let min_circle_radius = 5;
-let max_circle_radius = 50;
+const circle_radius_increment = 5;
+const min_circle_radius = 5;
+const max_circle_radius = 50;
 
 // distance between circle edge and canvas edge
-let canvas_padding = 20;
+const canvas_padding = 20;
 
 let circle_grid_start_pos_x = 56;
 let circle_grid_start_pos_y = 56;
@@ -34,7 +34,7 @@ let last_grid_circle_y = -1;
 let grid_connection_data = [];
 
 // Undo/redo data (stored as stacks)
-let max_memento_size = 100;
+const max_memento_size = 100;
 let undo_mementos = [];
 let redo_mementos = [];
 
@@ -71,7 +71,7 @@ window.onload = function () {
         event.preventDefault()
     })
 
-    set_grid_size(grid_size);
+    set_grid_size(grid_size, false);
     set_line_width(line_width);
     set_circle_spacing(circle_spacing);
     set_circle_radius(circle_radius);
@@ -93,45 +93,48 @@ function file_import() {
         return;
     }
 
-    const selectedFile = this.files[0];
+    const selected_file = this.files[0];
     const reader = new FileReader();
 
     reader.onload = function (e) {
         const content = e.target.result;
-        const parsed_grid_data = parse_grid_import_file(content);
-        if (!parsed_grid_data) {
+        const parsed_import_data = parse_import_file(content);
+        if (!parsed_import_data) {
             return;
         }
 
-        undo_mementos.push(structuredClone(grid_connection_data));
-        redo_mementos = [];
+        push_undo_state();
+
+        set_grid_size(parsed_import_data.grid_size, false);
 
         grid_connection_data = [];
-
-        parsed_grid_data.forEach((connection) => {
+        parsed_import_data.grid_connection_data.forEach((connection) => {
             try_add_new_grid_connection(connection, false);
         });
 
+        log_info("Imported grid size: ", grid_size);
         log_info("Imported grid data: ", grid_connection_data);
 
         update_connection_info();
     };
 
-    reader.readAsText(selectedFile);
+    reader.readAsText(selected_file);
 }
 
-function parse_grid_import_file(content) {
+function parse_import_file(content) {
     const lines = content.trim().split('\n');
-    const result = [];
+    const result = {
+        grid_connection_data: [],
+        grid_size: 0,
+    };
+
+    if (lines.length < 1) {
+        log_error(`Import error in line ${1}: Expected grid size.`);
+        return null;
+    }
 
     for (let i = 0; i < lines.length; i++) {
         let numbers = lines[i].trim().split(/\s+/).map(Number);
-
-        // Check if each line contains exactly 2 numbers
-        if (numbers.length !== 2) {
-            log_error(`Import error in line ${i + 1}: Each line must contain exactly 2 numbers.`);
-            return null;
-        }
 
         // Check if each number is an integer
         if (numbers.some(isNaN) || numbers.some(num => !Number.isInteger(num))) {
@@ -139,20 +142,41 @@ function parse_grid_import_file(content) {
             return null;
         }
 
-        // Check if each number is in the range [0, N-1]
-        if (numbers.some(num => num <= 0 || num > grid_size * grid_size)) {
-            log_error(`Import error in line ${i + 1}: Each number must be in the range [1, ${grid_size * grid_size}].`);
-            return null;
-        }
+        // Expect grid size
+        if (i === 0) {
+            if (numbers.length !== 1) {
+                log_error(`Import error in line ${i + 1}: Line defining grid size must contain exactly 1 number.`);
+                return null;
+            }
 
-        // convert from
-        // [1, N*N] grid indexes
-        // to
-        // [from_x, from_y, to_x, to_y] each in range [0, N-1]
-        numbers = numbers.map((num) => num - 1);
-        let edge_from = make_2D_index(numbers[0], grid_size);
-        let edge_to = make_2D_index(numbers[1], grid_size);
-        result.push([edge_from[0], edge_from[1], edge_to[0], edge_to[1]]);
+            if (numbers.some(num => num !== clamp(num, min_grid_size, max_grid_size))) {
+                log_error(`Import error in line ${i + 1}: Grid size must be in the range [${min_grid_size}, ${max_grid_size}].`);
+                return null;
+            }
+
+            result.grid_size = numbers[0];
+        }
+        // Expect grid connections
+        else {
+            if (numbers.length !== 2) {
+                log_error(`Import error in line ${i + 1}: Each line defining grid connection must contain exactly 2 numbers.`);
+                return null;
+            }
+
+            if (numbers.some(num => num !== clamp(num, 1, result.grid_size * result.grid_size))) {
+                log_error(`Import error in line ${i + 1}: Each number must be in the range [1, ${result.grid_size * result.grid_size}].`);
+                return null;
+            }
+
+            // convert from
+            // [1, N*N] grid indexes
+            // to
+            // [from_x, from_y, to_x, to_y] each in range [0, N-1]
+            numbers = numbers.map((num) => num - 1);
+            let edge_from = make_2D_index(numbers[0], result.grid_size);
+            let edge_to = make_2D_index(numbers[1], result.grid_size);
+            result.grid_connection_data.push([edge_from[0], edge_from[1], edge_to[0], edge_to[1]]);
+        }
     }
 
     return result;
@@ -175,19 +199,21 @@ function download(content, filename, contentType) {
 }
 
 function export_grid() {
+    let grid_export_data = [];
+    grid_export_data.push([grid_size]);
+
     // convert from
     // [from_x, from_y, to_x, to_y] each in range [0, N-1]
     // to
     // [1, N*N] grid indexes
-    let mapped_grid_connection_data = [];
     grid_connection_data.forEach((connection) => {
-        mapped_grid_connection_data.push([
+        grid_export_data.push([
             make_1D_index(connection[0], connection[1], grid_size) + 1,
             make_1D_index(connection[2], connection[3], grid_size) + 1
         ]);
     });
 
-    const content = mapped_grid_connection_data.map(row => row.join(' ')).join('\n');
+    const content = grid_export_data.map(row => row.join(' ')).join('\n');
     download(content, "grid_data.txt", "text/plain")
 }
 
@@ -407,26 +433,29 @@ function draw_line(from_x, from_y, to_x, to_y, style) {
 }
 
 function reset_grid() {
-    undo_mementos.push(structuredClone(grid_connection_data));
-    redo_mementos = [];
+    push_undo_state();
 
-    grid_connection_data.length = 0;
+    grid_connection_data = [];
     update_connection_info();
 }
 
-function set_grid_size(new_value) {
+function set_grid_size(new_value, add_to_undo_stack) {
+    if (add_to_undo_stack && grid_size !== clamp(new_value, min_grid_size, max_grid_size)) {
+        push_undo_state();
+    }
+
     grid_size = clamp(new_value, min_grid_size, max_grid_size);
     document.getElementById("grid_size").textContent = grid_size;
     auto_resize_canvas();
 }
 
 function increase_grid_size() {
-    set_grid_size(grid_size + 1);
+    set_grid_size(grid_size + 1, true);
     update_connection_info();
 }
 
 function decrease_grid_size() {
-    set_grid_size(grid_size - 1);
+    set_grid_size(grid_size - 1, true);
 
     // remove out of bounds grid connections
     for (let i = 0; i < grid_connection_data.length; i++) {
@@ -551,12 +580,10 @@ function try_add_new_grid_connection(connection, add_to_undo_stack) {
         simplified_vector.y *= -1;
     }
 
-    if (add_to_undo_stack) {
-        undo_mementos.push(structuredClone(grid_connection_data));
-    }
+    let new_connections = [];
 
     for (let i = 0; i < vector_count; i++) {
-        grid_connection_data.push([
+        new_connections.push([
             from_x + simplified_vector.x * i,
             from_y + simplified_vector.y * i,
             from_x + simplified_vector.x * (i + 1),
@@ -564,24 +591,17 @@ function try_add_new_grid_connection(connection, add_to_undo_stack) {
         ]);
     }
 
-    // remove duplicate entries
-    // https://stackoverflow.com/a/44014849
-    grid_connection_data = Array.from(new Set(grid_connection_data.map(JSON.stringify)), JSON.parse);
+    new_connections = new_connections.filter((new_connection) => {
+        return !grid_connection_data.some((grid_connection) => {
+            return arrays_equal(grid_connection, new_connection);
+        });
+    });
 
-    if (add_to_undo_stack) {
-        // revert new action from undo stack, if nothing was added
-        if (undo_mementos[undo_mementos.length - 1].length === grid_connection_data.length) {
-            undo_mementos.pop();
+    if (new_connections.length > 0) {
+        if (add_to_undo_stack) {
+            push_undo_state();
         }
-        else {
-            // otherwise, new action appeared, clear redo stack
-            redo_mementos = [];
-
-            // don't store too many undo actions
-            if (undo_mementos.length > max_memento_size) {
-                undo_mementos.shift();
-            }
-        }
+        grid_connection_data.push(...new_connections);
     }
 
     update_connection_info();
@@ -627,53 +647,46 @@ function remove_grid_entry_if_needed(mouse_pos_x, mouse_pos_y) {
         return;
     }
 
-    undo_mementos.push(structuredClone(grid_connection_data));
+    let from_x = old_last_grid_circle_x;
+    let from_y = old_last_grid_circle_y;
+    let to_x = last_grid_circle_x;
+    let to_y = last_grid_circle_y;
 
-    let arr_to_remove1 = [old_last_grid_circle_x, old_last_grid_circle_y, last_grid_circle_x, last_grid_circle_y];
-    let arr_to_remove2 = [last_grid_circle_x, last_grid_circle_y, old_last_grid_circle_x, old_last_grid_circle_y];
+    let connection_to_remove1 = [from_x, from_y, to_x, to_y];
+    let connection_to_remove2 = [to_x, to_y, from_x, from_y];
 
     for (let i = 0; i < grid_connection_data.length; i++) {
-        let is_equal1 = true;
-        let is_equal2 = true;
-        for (let j = 0; j < 4; j++) {
-            if (grid_connection_data[i][j] != arr_to_remove1[j]) {
-                is_equal1 = false;
-            }
-            if (grid_connection_data[i][j] != arr_to_remove2[j]) {
-                is_equal2 = false;
-            }
-        }
-
-        if (is_equal1 || is_equal2) {
+        if (arrays_equal(grid_connection_data[i], connection_to_remove1)
+            || arrays_equal(grid_connection_data[i], connection_to_remove2)
+        ) {
+            push_undo_state();
             grid_connection_data.splice(i, 1);
-        }
-    }
-
-    // revert new action from undo stack, if nothing was added
-    if (undo_mementos[undo_mementos.length - 1].length === grid_connection_data.length) {
-        undo_mementos.pop();
-    }
-    else {
-        // otherwise, new action appeared, clear redo stack
-        redo_mementos = [];
-
-        // don't store too many undo actions
-        if (undo_mementos.length > max_memento_size) {
-            undo_mementos.shift();
+            break;
         }
     }
 
     update_connection_info();
 }
 
-// NOTE: Only works with connections. Doesn't work with grid size changes or other parameters.
+function create_state_snapshot() {
+    return {
+        grid_connection_data: structuredClone(grid_connection_data),
+        grid_size: structuredClone(grid_size),
+    }
+}
+
+function load_state_snapshot(snapshot) {
+    grid_connection_data = structuredClone(snapshot.grid_connection_data);
+    set_grid_size(structuredClone(snapshot.grid_size), false);
+}
+
 function perform_undo() {
     if (undo_mementos.length === 0) {
         return;
     }
 
-    redo_mementos.push(structuredClone(grid_connection_data));
-    grid_connection_data = undo_mementos.pop();
+    redo_mementos.push(create_state_snapshot());
+    load_state_snapshot(undo_mementos.pop());
 
     update_connection_info();
 }
@@ -683,8 +696,22 @@ function perform_redo() {
         return;
     }
 
-    undo_mementos.push(structuredClone(grid_connection_data));
-    grid_connection_data = redo_mementos.pop();
+    undo_mementos.push(create_state_snapshot());
+    load_state_snapshot(redo_mementos.pop());
+
+    update_connection_info();
+}
+
+function push_undo_state() {
+    undo_mementos.push(create_state_snapshot());
+
+    // new action appeared, clear redo stack
+    redo_mementos = [];
+
+    // don't store too many undo actions
+    if (undo_mementos.length > max_memento_size) {
+        undo_mementos.shift();
+    }
 
     update_connection_info();
 }
@@ -859,4 +886,16 @@ function log_info(text, ...args) {
     } else {
         console.log("INFO: " + text);
     }
+}
+
+// Cares about element order. Only works for simple values inside array.
+function arrays_equal(a, b) {
+    if (a === b) return true;
+    if (a == null || b == null) return false;
+    if (a.length !== b.length) return false;
+
+    for (var i = 0; i < a.length; ++i) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
 }
