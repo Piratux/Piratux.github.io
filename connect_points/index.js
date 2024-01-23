@@ -112,7 +112,7 @@ function file_import() {
             try_add_new_grid_connection(connection, false);
         });
 
-        console.log("Imported grid data: ", grid_connection_data);
+        log_info("Imported grid data: ", grid_connection_data);
 
         update_connection_info();
     };
@@ -129,19 +129,19 @@ function parse_grid_import_file(content) {
 
         // Check if each line contains exactly 2 numbers
         if (numbers.length !== 2) {
-            alert(`Import error in line ${i + 1}: Each line must contain exactly 2 numbers.`);
+            log_error(`Import error in line ${i + 1}: Each line must contain exactly 2 numbers.`);
             return null;
         }
 
         // Check if each number is an integer
         if (numbers.some(isNaN) || numbers.some(num => !Number.isInteger(num))) {
-            alert(`Import error in line ${i + 1}: Each number must be an integer.`);
+            log_error(`Import error in line ${i + 1}: Each number must be an integer.`);
             return null;
         }
 
         // Check if each number is in the range [0, N-1]
         if (numbers.some(num => num <= 0 || num > grid_size * grid_size)) {
-            alert(`Import error in line ${i + 1}: Each number must be in the range [1, ${grid_size * grid_size}].`);
+            log_error(`Import error in line ${i + 1}: Each number must be in the range [1, ${grid_size * grid_size}].`);
             return null;
         }
 
@@ -841,5 +841,22 @@ function gcd(a, b) {
         return gcd(b, a % b);
     } else {
         return Math.abs(a);
+    }
+}
+
+function log_error(text, ...args) {
+    alert("ERROR: " + text);
+    if (args.length > 0) {
+        console.log("ERROR: " + text, args);
+    } else {
+        console.log("ERROR: " + text);
+    }
+}
+
+function log_info(text, ...args) {
+    if (args.length > 0) {
+        console.log("INFO: " + text, args);
+    } else {
+        console.log("INFO: " + text);
     }
 }
