@@ -323,7 +323,7 @@ function export_grid() {
                 let to_idx = make_1D_index(connection[2], connection[3], grid_size) + 1;
                 if (from_idx === first_vertex) {
                     if (vertex_idx_is_taken_func(to_idx) && !(to_idx === last_vertex && i === grid_connection_data.length - 1)) {
-                        log_error(`Export error: Current graph is not a walk. 1`);
+                        log_error(`Export error: Current graph is not a walk or there is more than one walk.`);
                         return;
                     }
                     vertex_list.unshift(to_idx);
@@ -333,7 +333,7 @@ function export_grid() {
                 }
                 else if (to_idx === first_vertex) {
                     if (vertex_idx_is_taken_func(from_idx) && !(from_idx === last_vertex && i === grid_connection_data.length - 1)) {
-                        log_error(`Export error: Current graph is not a walk. 2`);
+                        log_error(`Export error: Current graph is not a walk or there is more than one walk.`);
                         return;
                     }
                     vertex_list.unshift(from_idx);
@@ -343,7 +343,7 @@ function export_grid() {
                 }
                 else if (from_idx === last_vertex) {
                     if (vertex_idx_is_taken_func(to_idx) && !(to_idx === first_vertex && i === grid_connection_data.length - 1)) {
-                        log_error(`Export error: Current graph is not a walk. 3`);
+                        log_error(`Export error: Current graph is not a walk or there is more than one walk.`);
                         return;
                     }
                     vertex_list.push(to_idx);
@@ -353,7 +353,7 @@ function export_grid() {
                 }
                 else if (to_idx === last_vertex) {
                     if (vertex_idx_is_taken_func(from_idx) && !(from_idx === first_vertex && i === grid_connection_data.length - 1)) {
-                        log_error(`Export error: Current graph is not a walk. 4`);
+                        log_error(`Export error: Current graph is not a walk or there is more than one walk.`);
                         return;
                     }
                     vertex_list.push(from_idx);
@@ -363,7 +363,7 @@ function export_grid() {
                 }
             }
             if (!element_inserted) {
-                log_error(`Export error: Current graph is not a walk. 5`);
+                log_error(`Export error: Current graph is not a walk or there is more than one walk.`);
                 return;
             }
         }
