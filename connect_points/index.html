@@ -88,6 +88,17 @@
             </div>
         </div>
 
+        Import / Export type:
+        <select id="import_export_type">
+            <option
+                value="connection_pairs"
+                selected="selected"
+            >Connection pairs</option>
+            <option value="vertex_list">Vertex list (intended for walks)</option>
+        </select>
+
+        <br />
+
         <button
             onclick="reset_grid()"
             style="margin-right: 2em;"
@@ -127,7 +138,7 @@
             Import/Export
         </h2>
         <p>
-            Data is imported/exported in following format:
+            Connection pairs import/export format:
             <br />
             <textarea
                 rows=4
@@ -139,6 +150,8 @@ edge_1_from_idx edge_1_to_idx
 edge_2_from_idx edge_2_to_idx
 ...
 edge_n_from_idx edge_n_to_idx</textarea>
+            <br />
+            This format is intended as universal format that allows importing/exporting any type of graph.
             <br />
             Here, indexes are in range [1, grid_size * grid_size].
             <br />
@@ -156,6 +169,37 @@ edge_n_from_idx edge_n_to_idx</textarea>
 12 19
 8 19
 8 15</textarea>
+        </p>
+        <p>
+            Vertex list format is intended to import/export only single walk <a
+                href="https://en.wikipedia.org/wiki/Path_(graph_theory)"
+                title="path"
+            >path</a> in the graph.
+        </p>
+        <p>
+            Vertex list import/export format:
+            <br />
+            <textarea
+                rows=4
+                cols=80
+                readonly
+            >
+grid_size
+vertex_1_idx vertex_2_idx ... vertex_n_idx</textarea>
+            <br />
+            Here, indexes are in range [1, grid_size * grid_size].
+            <br />
+            Invalid connections (such as edge connecting vertex A with vertex A or duplicate connection) upon import
+            will be automatically removed.
+            <br />
+            Example of valid import grid data for 5x5 grid:
+            <textarea
+                rows=4
+                cols=80
+                readonly
+            >
+5
+1 12 19 8 15</textarea>
         </p>
 
         <h2>

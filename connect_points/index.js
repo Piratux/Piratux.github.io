@@ -121,7 +121,7 @@ function file_import() {
     reader.readAsText(selected_file);
 }
 
-function parse_import_file(content) {
+function parse_import_file_as_connection_pairs(content) {
     const lines = content.trim().split('\n');
     const result = {
         grid_connection_data: [],
@@ -182,6 +182,85 @@ function parse_import_file(content) {
     return result;
 }
 
+function parse_import_file_as_vertex_list(content) {
+    const lines = content.trim().split('\n');
+    const result = {
+        grid_connection_data: [],
+        grid_size: 0,
+    };
+
+    if (lines.length < 1) {
+        log_error(`Import error in line ${1}: Expected grid size.`);
+        return null;
+    }
+
+    for (let i = 0; i < 2; i++) {
+        let numbers = lines[i].trim().split(/\s+/).map(Number);
+
+        // Check if each number is an integer
+        if (numbers.some(isNaN) || numbers.some(num => !Number.isInteger(num))) {
+            log_error(`Import error in line ${i + 1}: Each number must be an integer.`);
+            return null;
+        }
+
+        // Expect grid size
+        if (i === 0) {
+            if (numbers.length !== 1) {
+                log_error(`Import error in line ${i + 1}: Line defining grid size must contain exactly 1 number.`);
+                return null;
+            }
+
+            if (numbers.some(num => num !== clamp(num, min_grid_size, max_grid_size))) {
+                log_error(`Import error in line ${i + 1}: Grid size must be in the range [${min_grid_size}, ${max_grid_size}].`);
+                return null;
+            }
+
+            result.grid_size = numbers[0];
+        }
+        // Expect grid connections
+        else if (i === 1){
+            if (numbers.some(num => num !== clamp(num, 1, result.grid_size * result.grid_size))) {
+                log_error(`Import error in line ${i + 1}: Each number must be in the range [1, ${result.grid_size * result.grid_size}].`);
+                return null;
+            }
+
+            if(numbers.length <= 1){
+                break;
+            }
+
+            // convert from
+            // [1, N*N] grid indexes
+            // to
+            // [from_x, from_y, to_x, to_y] each in range [0, N-1]
+            numbers = numbers.map((num) => num - 1);
+            let edge_from = make_2D_index(numbers[0], result.grid_size);
+            let edge_to = make_2D_index(numbers[1], result.grid_size);
+            result.grid_connection_data.push([edge_from[0], edge_from[1], edge_to[0], edge_to[1]]);
+
+            for(let i = 2; i < numbers.length; i++){
+                let edge_from = make_2D_index(numbers[i-1], result.grid_size);
+                let edge_to = make_2D_index(numbers[i], result.grid_size);
+                result.grid_connection_data.push([edge_from[0], edge_from[1], edge_to[0], edge_to[1]]);
+            }
+        }
+    }
+
+    return result;
+}
+
+function parse_import_file(content) {
+    let import_export_type = get_import_export_type();
+    if (import_export_type === "connection_pairs") {
+        return parse_import_file_as_connection_pairs(content);
+    }
+    else if (import_export_type === "vertex_list") {
+        return parse_import_file_as_vertex_list(content);
+    }
+    else {
+        log_error("Unexpected import error.");
+    }
+}
+
 function import_grid() {
     document.getElementById("file_input").click();
 }
@@ -202,16 +281,98 @@ function export_grid() {
     let grid_export_data = [];
     grid_export_data.push([grid_size]);
 
-    // convert from
-    // [from_x, from_y, to_x, to_y] each in range [0, N-1]
-    // to
-    // [1, N*N] grid indexes
-    grid_connection_data.forEach((connection) => {
-        grid_export_data.push([
-            make_1D_index(connection[0], connection[1], grid_size) + 1,
-            make_1D_index(connection[2], connection[3], grid_size) + 1
-        ]);
-    });
+    let import_export_type = get_import_export_type();
+    if (import_export_type === "connection_pairs") {
+        // convert from
+        // [from_x, from_y, to_x, to_y] each in range [0, N-1]
+        // to
+        // [1, N*N] grid indexes
+        grid_connection_data.forEach((connection) => {
+            grid_export_data.push([
+                make_1D_index(connection[0], connection[1], grid_size) + 1,
+                make_1D_index(connection[2], connection[3], grid_size) + 1
+            ]);
+        });
+    }
+    else if (import_export_type === "vertex_list") {
+        // TODO: YUCK... there should be cleaner way to do this
+        let vertex_list = [];
+
+        if (grid_connection_data.length > 0) {
+            let first_connection = grid_connection_data[0];
+            let from_idx = make_1D_index(first_connection[0], first_connection[1], grid_size) + 1;
+            let to_idx = make_1D_index(first_connection[2], first_connection[3], grid_size) + 1;
+            vertex_list.push(from_idx);
+            vertex_list.push(to_idx);
+        }
+
+        let vertex_idx_is_taken_func = (idx) => {
+            return vertex_list.some((vertex) => idx === vertex);
+        };
+
+        let grid_connection_data_copy = structuredClone(grid_connection_data);
+        array_remove_element_at_index(grid_connection_data_copy, 0);
+
+        for (let i = 1; i < grid_connection_data.length; i++) {
+            let first_vertex = vertex_list[0];
+            let last_vertex = vertex_list[vertex_list.length - 1];
+            let element_inserted = false;
+            for (let j = 0; j < grid_connection_data_copy.length; j++) {
+                let connection = grid_connection_data_copy[j];
+                let from_idx = make_1D_index(connection[0], connection[1], grid_size) + 1;
+                let to_idx = make_1D_index(connection[2], connection[3], grid_size) + 1;
+                if (from_idx === first_vertex) {
+                    if (vertex_idx_is_taken_func(to_idx) && !(to_idx === last_vertex && i === grid_connection_data.length - 1)) {
+                        log_error(`Export error: Current graph is not a walk. 1`);
+                        return;
+                    }
+                    vertex_list.unshift(to_idx);
+                    element_inserted = true;
+                    array_remove_element_at_index(grid_connection_data_copy, j);
+                    break;
+                }
+                else if (to_idx === first_vertex) {
+                    if (vertex_idx_is_taken_func(from_idx) && !(from_idx === last_vertex && i === grid_connection_data.length - 1)) {
+                        log_error(`Export error: Current graph is not a walk. 2`);
+                        return;
+                    }
+                    vertex_list.unshift(from_idx);
+                    element_inserted = true;
+                    array_remove_element_at_index(grid_connection_data_copy, j);
+                    break;
+                }
+                else if (from_idx === last_vertex) {
+                    if (vertex_idx_is_taken_func(to_idx) && !(to_idx === first_vertex && i === grid_connection_data.length - 1)) {
+                        log_error(`Export error: Current graph is not a walk. 3`);
+                        return;
+                    }
+                    vertex_list.push(to_idx);
+                    element_inserted = true;
+                    array_remove_element_at_index(grid_connection_data_copy, j);
+                    break;
+                }
+                else if (to_idx === last_vertex) {
+                    if (vertex_idx_is_taken_func(from_idx) && !(from_idx === first_vertex && i === grid_connection_data.length - 1)) {
+                        log_error(`Export error: Current graph is not a walk. 4`);
+                        return;
+                    }
+                    vertex_list.push(from_idx);
+                    element_inserted = true;
+                    array_remove_element_at_index(grid_connection_data_copy, j);
+                    break;
+                }
+            }
+            if (!element_inserted) {
+                log_error(`Export error: Current graph is not a walk. 5`);
+                return;
+            }
+        }
+
+        grid_export_data.push(vertex_list);
+    }
+    else{
+        log_error("Unexpected export error.");
+    }
 
     const content = grid_export_data.map(row => row.join(' ')).join('\n');
     download(content, "grid_data.txt", "text/plain")
@@ -744,6 +905,10 @@ function is_auto_connect_circles_enabled() {
     return document.getElementById("auto_connect_circles").checked;
 }
 
+function get_import_export_type() {
+    return document.getElementById("import_export_type").value;
+}
+
 function update_connection_info() {
     let d_g = 0;
     for (let i = 0; i < grid_connection_data.length; i++) {
@@ -886,6 +1051,11 @@ function log_info(text, ...args) {
     } else {
         console.log("INFO: " + text);
     }
+}
+
+function array_remove_element_at_index(arr, idx) {
+    arr.splice(idx, 1);
+    return arr;
 }
 
 // Cares about element order. Only works for simple values inside array.
