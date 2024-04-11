@@ -121,7 +121,7 @@ function file_import() {
     reader.readAsText(selected_file);
 }
 
-function parse_import_file_as_connection_pairs(content) {
+function parse_import_file_as_connection_list(content) {
     const lines = content.trim().split('\n');
     const result = {
         grid_connection_data: [],
@@ -250,8 +250,8 @@ function parse_import_file_as_vertex_list(content) {
 
 function parse_import_file(content) {
     let import_export_type = get_import_export_type();
-    if (import_export_type === "connection_pairs") {
-        return parse_import_file_as_connection_pairs(content);
+    if (import_export_type === "connection_list") {
+        return parse_import_file_as_connection_list(content);
     }
     else if (import_export_type === "vertex_list") {
         return parse_import_file_as_vertex_list(content);
@@ -282,7 +282,7 @@ function export_grid() {
     grid_export_data.push([grid_size]);
 
     let import_export_type = get_import_export_type();
-    if (import_export_type === "connection_pairs") {
+    if (import_export_type === "connection_list") {
         // convert from
         // [from_x, from_y, to_x, to_y] each in range [0, N-1]
         // to
