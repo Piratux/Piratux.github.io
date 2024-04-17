@@ -95,6 +95,7 @@
                 selected="selected"
             >Connection list</option>
             <option value="vertex_list">Vertex list (intended for walks)</option>
+            <option value="connection_chain">Connection chain (intended for walks)</option>
         </select>
 
         <br />
@@ -134,72 +135,104 @@
             - CTRL+Y: redo connection.
         </p>
 
-        <h2>
-            Import/Export
-        </h2>
+        <h2>Import/Export formats</h2>
         <p>
-            Connection list import/export format:
-            <br />
-            <textarea
-                rows=4
-                cols=80
-                readonly
-            >
+        <h3>Connection list</h3>
+        Connection list format is intended as universal format that allows importing/exporting any type of graph.
+        <br />
+        <br />
+        Format description:
+        <br />
+        - grid_size &isin; [1; 50]
+        <br />
+        - edge_i_from_idx, edge_i_to_idx &isin; [1; grid_size * grid_size]
+        <textarea
+            rows=4
+            cols=80
+            readonly
+        >
 grid_size
 edge_1_from_idx edge_1_to_idx
 edge_2_from_idx edge_2_to_idx
 ...
 edge_n_from_idx edge_n_to_idx</textarea>
-            <br />
-            This format is intended as universal format that allows importing/exporting any type of graph.
-            <br />
-            Here, indexes are in range [1, grid_size * grid_size].
-            <br />
-            Invalid connections (such as edge connecting vertex A with vertex A or duplicate connection) upon import
-            will be automatically removed.
-            <br />
-            Example of valid import grid data for 5x5 grid:
-            <textarea
-                rows=4
-                cols=80
-                readonly
-            >
+        <br />
+        Example with 5x5 grid:
+        <textarea
+            rows=4
+            cols=80
+            readonly
+        >
 5
 1 12
 12 19
 8 19
 8 15</textarea>
         </p>
+
         <p>
-            Vertex list format is intended to import/export only single walk <a
-                href="https://en.wikipedia.org/wiki/Path_(graph_theory)"
-                title="path"
-            >path</a> in the graph.
-        </p>
-        <p>
-            Vertex list import/export format:
-            <br />
-            <textarea
-                rows=4
-                cols=80
-                readonly
-            >
+        <h3>Vertex list</h3>
+        Vertex list format is intended to import/export only a single <a
+            href="https://en.wikipedia.org/wiki/Path_(graph_theory)"
+            title="walk"
+        >walk</a> in the graph.
+        <br />
+        <br />
+        Format description:
+        <br />
+        - grid_size &isin; [1; 50]
+        <br />
+        - vertex_i_idx &isin; [1; grid_size * grid_size]
+        <textarea
+            rows=4
+            cols=80
+            readonly
+        >
 grid_size
 vertex_1_idx vertex_2_idx ... vertex_n_idx</textarea>
-            <br />
-            Here, indexes are in range [1, grid_size * grid_size].
-            <br />
-            Invalid connections (such as edge connecting vertex A with vertex A or duplicate connection) upon import
-            will be automatically removed.
-            <br />
-            Example of valid import grid data for 5x5 grid:
-            <textarea
-                rows=4
-                cols=80
-                readonly
-            >
+        <br />
+        Example with 5x5 grid:
+        <textarea
+            rows=4
+            cols=80
+            readonly
+        >
 5
 1 12 19 8 15</textarea>
+        </p>
+
+        <p>
+        <h3>Connection chain</h3>
+        Connection chain format is intended to import/export only a single <a
+            href="https://en.wikipedia.org/wiki/Path_(graph_theory)"
+            title="walk"
+        >walk</a> in the graph.
+        <br />
+        Unlike connection list format, this format make sure that <em>edge_(i)_to_idx</em> always matches
+        <em>edge_(i+1)_from_idx</em>
+        <br />
+        <br />
+        Format description:
+        <br />
+        - grid_size &isin; [1; 50]
+        <br />
+        - edge_i_from_idx, edge_i_to_idx &isin; [1; grid_size * grid_size]
+        <textarea
+            rows=4
+            cols=80
+            readonly
+        >
+grid_size
+{{edge_1_from_idx, edge_1_to_idx}, {edge_2_from_idx, edge_2_to_idx}, ..., {edge_n_from_idx, edge_n_to_idx}}</textarea>
+        <br />
+        Example with 5x5 grid:
+        <textarea
+            rows=4
+            cols=80
+            readonly
+        >
+5
+{{1, 12}, {12, 19}, {19, 8}, {8, 15}}</textarea>
         </p>
 
         <h2>
