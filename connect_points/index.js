@@ -263,7 +263,7 @@ function parse_import_file_as_connection_chain(content) {
     for (let i = 0; i < 2; i++) {
         let numbers = i === 0
             ? lines[i].trim().split(/\s+/).map(Number)
-            : lines[i].trim().replaceAll("{", "").replaceAll("}", "").replaceAll(",", "").split(/\s+/).map(Number);
+            : lines[i].replaceAll("{", " ").replaceAll("}", " ").replaceAll(",", " ").trim().split(/\s+/).map(Number);
 
         // Check if each number is an integer
         if (numbers.some(isNaN) || numbers.some(num => !Number.isInteger(num))) {
