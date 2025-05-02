@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+
+<head>
+    <meta charset="UTF-8">
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
+    <title>Probabilistic Counting and Adaptive Sampling</title>
+    <script
+            type="text/javascript"
+            src="./sha256.min.js"
+    ></script>
+
+    <link
+            rel="stylesheet"
+            href="style.css"
+    />
+
+</head>
+
+<body>
+
+<h2>Probabilistic Counting and Adaptive Sampling</h2>
+
+
+<label for="arrayLengthInput">Array length:</label>
+<br>
+<input
+        type="number"
+        id="arrayLengthInput"
+>
+<span
+        id="arrayLengthError"
+        class="error"
+        style="color:red"
+></span>
+<br>
+
+<label for="arrayUniqueRatioInput">Unique elements ratio (1 - all unique, 0 all the same):</label>
+<br>
+<input
+        type="number"
+        id="arrayUniqueRatioInput"
+>
+<span
+        id="arrayUniqueRatioError"
+        class="error"
+        style="color:red"
+></span>
+<br>
+
+<label for="mInput">m (increases accuracy at the cost of extra storage and computing required):</label>
+<br>
+<input
+        type="number"
+        id="mInput"
+>
+<span
+        id="mError"
+        class="error"
+        style="color:red"
+></span>
+<br>
+
+<br>
+Actual unique element count:
+<br>
+<b><span id="unique_count"></span></b>
+<br>
+Probabilistic Counting unique element count estimate:
+<br>
+<b><span id="pc_unique_count"></span></b>
+<br>
+Probabilistic Counting unique element count estimate/actual ratio:
+<br>
+<b><span id="pc_unique_count_ratio"></span></b>
+<br>
+Adaptive Sampling unique element count estimate:
+<br>
+<b><span id="as_unique_count"></span></b>
+<br>
+Adaptive Sampling unique element count estimate/actual ratio:
+<br>
+<b><span id="as_unique_count_ratio"></span></b>
+
+<br>
+
+<button onclick="validateAndRunExperiment()"
+        title="Generate new array and use both algorithms to estimate unique element count">Run experiment
+</button>
+
+<b><span id="computing"></span></b>
+
+<br>
+
+<h3>
+    Information
+</h3>
+<div>
+    Probabilistic Counting and Adaptive Sampling algorithms are probabilistic algorithms used for estimating the number
+    of distinct elements in multiset. These algorithms can be used to optimise relational database queries, where
+    queries contain joins between tables and tables have large amount of entries.
+    <br>
+    <br>
+    These algorithms are interesting, because they estimate unique element count in O(N) time while using O(m) space,
+    where 'N' is the number of elements in the multiset and 'm' is a parameter that can be adjusted to increase accuracy
+    at the cost of extra storage and computing required.
+    <br>
+    <br>
+    This page implements both of these algorithms and allows you to run experiments to check how accurately these
+    algorithms estimate unique element count.
+    <br>
+    <br>
+    In general case, Adaptive Sampling algorithm is ~50% less accurate than Probabilistic Counting algorithm, however Adaptive Sampling algorithm is simpler, and produces more accurate estimates when ratio of (actual unique element count/'m' parameter) is < 1.
+    <br>
+    <br>
+    Source of the algorithms:
+<ul>
+    <li><a href="Probabilistic-counting-1985.pdf" target="_blank">Probabilistic Counting</a></li>
+    <li><a href="Adaptive-sampling-1990.pdf" target="_blank">Adaptive Sampling</a></li>
+</ul>
+</div>
+
+
+<script>
+
+    class Random {
+        static N = 624;
+        static M = 397;
+        static MATRIX_A = 0x9908b0df;
+        /* constant vector a */
+        static UPPER_MASK = 0x80000000;
+        /* most significant w-r bits */
+        static LOWER_MASK = 0x7fffffff;
+        /* least significant r bits */
+
+        mt = new Array(Random.N);
+        /* the array for the state vector */
+        mti = Random.N + 1;
+
+        /* mti==N+1 means mt[N] is not initialized */
+
+        constructor(seed = null) {
+            if (seed == null) {
+                seed = new Date().getTime();
+            }
+
+            this.init_genrand(seed);
+        }
+
+        init_genrand(s) {
+            this.mt[0] = s >>> 0;
+            for (this.mti = 1; this.mti < Random.N; this.mti++) {
+                var s = this.mt[this.mti - 1] ^ (this.mt[this.mti - 1] >>> 30);
+                this.mt[this.mti] = (((((s & 0xffff0000) >>> 16) * 1812433253) << 16) + (s & 0x0000ffff) * 1812433253)
+                    + this.mti;
+                /* See Knuth TAOCP Vol2. 3rd Ed. P.106 for multiplier. */
+                /* In the previous versions, MSBs of the seed affect   */
+                /* only MSBs of the array mt[].                        */
+                /* 2002/01/09 modified by Makoto Matsumoto             */
+                this.mt[this.mti] >>>= 0;
+                /* for >32 bit machines */
+            }
+        }
+
+        /**
+         * generates a random number on [0,0xffffffff]-interval
+         * @private
+         */
+        _nextInt32() {
+            var y;
+            var mag01 = new Array(0x0, Random.MATRIX_A);
+            /* mag01[x] = x * MATRIX_A  for x=0,1 */
+
+            if (this.mti >= Random.N) { /* generate N words at one time */
+                var kk;
+
+                if (this.mti == Random.N + 1)   /* if init_genrand() has not been called, */
+                    this.init_genrand(5489);
+                /* a default initial seed is used */
+
+                for (kk = 0; kk < Random.N - Random.M; kk++) {
+                    y = (this.mt[kk] & Random.UPPER_MASK) | (this.mt[kk + 1] & Random.LOWER_MASK);
+                    this.mt[kk] = this.mt[kk + Random.M] ^ (y >>> 1) ^ mag01[y & 0x1];
+                }
+                for (; kk < Random.N - 1; kk++) {
+                    y = (this.mt[kk] & Random.UPPER_MASK) | (this.mt[kk + 1] & Random.LOWER_MASK);
+                    this.mt[kk] = this.mt[kk + (Random.M - Random.N)] ^ (y >>> 1) ^ mag01[y & 0x1];
+                }
+                y = (this.mt[Random.N - 1] & Random.UPPER_MASK) | (this.mt[0] & Random.LOWER_MASK);
+                this.mt[Random.N - 1] = this.mt[Random.M - 1] ^ (y >>> 1) ^ mag01[y & 0x1];
+
+                this.mti = 0;
+            }
+
+            y = this.mt[this.mti++];
+
+            /* Tempering */
+            y ^= (y >>> 11);
+            y ^= (y << 7) & 0x9d2c5680;
+            y ^= (y << 15) & 0xefc60000;
+            y ^= (y >>> 18);
+
+            return y >>> 0;
+        }
+
+        /**
+         * generates an int32 pseudo random number
+         * @param range: an optional [from, to] range, if not specified the result will be in range [0,0xffffffff]
+         * @return {number}
+         */
+        nextInt32(range = null) {
+            var result = this._nextInt32();
+            if (range == null) {
+                return result;
+            }
+
+            return (result % (range[1] - range[0])) + range[0];
+        }
+
+        /**
+         * generates a random number on [0,0x7fffffff]-interval
+         */
+        nextInt31() {
+            return (this._nextInt32() >>> 1);
+        }
+
+        /**
+         * generates a random number on [0,1]-real-interval
+         */
+        nextNumber() {
+            return this._nextInt32() * (1.0 / 4294967295.0);
+        }
+
+        /**
+         * generates a random number on [0,1) with 53-bit resolution
+         */
+        nextNumber53() {
+            var a = this._nextInt32() >>> 5, b = this._nextInt32() >>> 6;
+            return (a * 67108864.0 + b) * (1.0 / 9007199254740992.0);
+        }
+    }
+
+    let random = new Random();
+
+    function init() {
+        setDefaultValues();
+    }
+
+    function getArrayLengthInput() {
+        return document.getElementById('arrayLengthInput').value
+    }
+
+    function setArrayLengthInput(value) {
+        return document.getElementById('arrayLengthInput').value = value
+    }
+
+    function getArrayUniqueRatioInput() {
+        return document.getElementById('arrayUniqueRatioInput').value
+    }
+
+    function setArrayUniqueRatioInput(value) {
+        return document.getElementById('arrayUniqueRatioInput').value = value
+    }
+
+    function getMInput() {
+        return document.getElementById('mInput').value
+    }
+
+    function setMInput(value) {
+        return document.getElementById('mInput').value = value
+    }
+
+    function setDefaultValues() {
+        setArrayLengthInput(1000)
+        setArrayUniqueRatioInput(0.8)
+        setMInput(64)
+
+        // setArrayLengthInput(1000)
+        // setArrayUniqueRatioInput(0.8)
+        // setMInput(1)
+    }
+
+    function isNumber(value) {
+        return !isNaN(parseFloat(value)) && isFinite(value);
+    }
+
+    function validateInput() {
+        const arrayLengthInput = getArrayLengthInput()
+        const arrayUniqueRatioInput = getArrayUniqueRatioInput()
+        const mInput = getMInput()
+
+        const arrayLengthError = document.getElementById('arrayLengthError');
+        const arrayUniqueRatioError = document.getElementById('arrayUniqueRatioError');
+        const mError = document.getElementById('mError');
+
+        // Clear previous errors
+        arrayLengthError.textContent = '';
+        arrayUniqueRatioError.textContent = '';
+        mError.textContent = '';
+
+        let result = true
+
+        if (!isNumber(arrayLengthInput) || arrayLengthInput < 1 || arrayLengthInput > 1000000) {
+            arrayLengthError.textContent = 'Enter a valid number in range [1, 1000000]';
+            result = false;
+        }
+
+        if (!isNumber(arrayUniqueRatioInput) || arrayUniqueRatioInput <= 0 || arrayUniqueRatioInput > 1) {
+            arrayUniqueRatioError.textContent = 'Enter a valid number in range (0, 1]';
+            result = false;
+        }
+
+        if (!isNumber(mInput) || mInput < 1 || mInput > 1024) {
+            mError.textContent = 'Enter a valid number in range [1, 1024]';
+            result = false;
+        }
+        return result
+    }
+
+    function validateAndRunExperiment() {
+        if (!validateInput()) {
+            return
+        }
+
+        // If all values are valid, proceed to evaluate the function
+        runExperiment();
+    }
+
+    function getUniqueCount() {
+        return Math.max(1, Math.floor(getArrayUniqueRatioInput() * getArrayLengthInput()))
+    }
+
+    function createExperimentArray() {
+        // seed = random.nextInt31()
+        // random.init_genrand(/**/seed)
+        random = new Random()
+
+
+        const unique_count = getUniqueCount()
+        let arr = []
+        for (let i = 0; i < unique_count; i++) {
+            arr.push(random.nextInt31())
+        }
+
+        for (let i = unique_count; i < getArrayLengthInput(); i++) {
+            arr.push(arr[random.nextInt31() % unique_count])
+        }
+
+        return arr
+    }
+
+    function runExperiment() {
+        document.getElementById('computing').innerText = "Computing..."
+        // Timeout used to immediately show "Computing..." message
+        setTimeout(() => {
+            const arr = createExperimentArray()
+
+            const pc_estimate = getProbabilisticUniqueCountEstimate(arr)
+            const as_estimate = getAdaptiveSamplingUniqueCountEstimate(arr)
+
+            const unique_count = getUniqueCount()
+            document.getElementById('unique_count').innerText = unique_count
+            document.getElementById('pc_unique_count').innerText = pc_estimate
+            document.getElementById('pc_unique_count_ratio').innerText = (pc_estimate / unique_count).toFixed(2)
+            document.getElementById('as_unique_count').innerText = as_estimate
+            document.getElementById('as_unique_count_ratio').innerText = (as_estimate / unique_count).toFixed(2)
+            document.getElementById('computing').innerText = ''
+        }, 10)
+    }
+
+    function sha256BinaryString(value) {
+        return hexToBinary(sha256(value.toString()))
+    }
+
+    function getProbabilisticUniqueCountEstimate(arr) {
+        const m = Number(getMInput())
+        const bitmaps = new Array(m).fill([])
+
+        for (let i = 0; i < bitmaps.length; i++) {
+            bitmaps[i] = new Array(256).fill(0)
+        }
+
+        for (const arrElement of arr) {
+            const hashValueBinary = sha256BinaryString(arrElement)
+            let zeroSeriesCount = hashValueBinary.split('').findIndex((el) => el === '1')
+            if (zeroSeriesCount === -1) {
+                zeroSeriesCount = 255
+            }
+
+            const idx = parseInt(hashValueBinary.slice(256 - 16, 256), 2) % m
+            const bitmap = bitmaps[idx]
+            bitmap[zeroSeriesCount] = 1
+        }
+
+        // This part is different from the paper, because using formula from the paper produced inaccurate results
+        let s = 0
+        for (const bitmap of bitmaps) {
+            const idx = bitmap.findIndex((el) => el === 0)
+            s += (idx === -1 ? 255 : idx)
+        }
+
+        const magic_constant = 0.77351
+        return Math.trunc((m / magic_constant) * Math.pow(2, s / m))
+    }
+
+    function getAdaptiveSamplingUniqueCountEstimate(arr) {
+        const m = Number(getMInput())
+        let depth = 0
+        let set = new Set()
+
+        for (const arrElement of arr) {
+            const hashValueBinary = sha256BinaryString(arrElement)
+            let zeroSeriesCount = hashValueBinary.split('').findIndex((el) => el === '1')
+            if (zeroSeriesCount === -1) {
+                zeroSeriesCount = 255
+            }
+
+            if (zeroSeriesCount >= depth) {
+                set.add(hashValueBinary)
+            }
+            while (set.size > m) {
+                depth += 1
+                const tempSet = new Set()
+                for (const setElement of set) {
+                    let zeroSeriesCount = setElement.split('').findIndex((el) => el === '1')
+                    if (zeroSeriesCount === -1) {
+                        zeroSeriesCount = 255
+                    }
+
+                    if (zeroSeriesCount >= depth) {
+                        tempSet.add(setElement)
+                    }
+                }
+                set = tempSet
+            }
+        }
+        return set.size * Math.pow(2, depth)
+    }
+
+    function hexToBinary(hexString) {
+        if (!hexString) {
+            return ""; // or null, depending on desired behavior for empty input
+        }
+
+        const hexChars = "0123456789abcdefABCDEF";
+        for (let i = 0; i < hexString.length; i++) {
+            if (hexChars.indexOf(hexString[i]) === -1) {
+                return null; // Invalid hex character found - return null to indicate error.  Can also throw an error.
+            }
+        }
+
+        let binaryString = "";
+        for (let i = 0; i < hexString.length; i++) {
+            const hexChar = hexString[i].toLowerCase(); // Handle both upper and lower case
+            let binaryValue;
+
+            switch (hexChar) {
+                case '0':
+                    binaryValue = "0000";
+                    break;
+                case '1':
+                    binaryValue = "0001";
+                    break;
+                case '2':
+                    binaryValue = "0010";
+                    break;
+                case '3':
+                    binaryValue = "0011";
+                    break;
+                case '4':
+                    binaryValue = "0100";
+                    break;
+                case '5':
+                    binaryValue = "0101";
+                    break;
+                case '6':
+                    binaryValue = "0110";
+                    break;
+                case '7':
+                    binaryValue = "0111";
+                    break;
+                case '8':
+                    binaryValue = "1000";
+                    break;
+                case '9':
+                    binaryValue = "1001";
+                    break;
+                case 'a':
+                    binaryValue = "1010";
+                    break;
+                case 'b':
+                    binaryValue = "1011";
+                    break;
+                case 'c':
+                    binaryValue = "1100";
+                    break;
+                case 'd':
+                    binaryValue = "1101";
+                    break;
+                case 'e':
+                    binaryValue = "1110";
+                    break;
+                case 'f':
+                    binaryValue = "1111";
+                    break;
+                default:
+                    // This should not happen due to input validation, but it's good practice to have a default
+                    return null; // Or throw an error.
+            }
+
+            binaryString += binaryValue;
+        }
+
+        return binaryString;
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+
+</html>
